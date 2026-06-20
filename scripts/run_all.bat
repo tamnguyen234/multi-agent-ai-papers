@@ -83,7 +83,7 @@ if "!START_BACKEND!"=="1" (
 
 :: 3. AI Agents
 if "!START_AGENTS!"=="1" (
-    echo Starting AI Agents (Ports 8101-8104)...
+    echo Starting AI Agents [Ports 8101-8104]...
     start "Summarizer Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\summarizer_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8101"
     start "Trend Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\trend_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8102"
     start "QA Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\qa_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8103"
