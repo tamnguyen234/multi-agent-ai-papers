@@ -143,9 +143,6 @@ echo SUCCESS: Environment setup completed successfully!
 echo =======================================================
 echo To start the services, run:
 echo    scripts\run_all.bat
-echo.
-echo To verify their health check:
-echo    scripts\check_health.bat
 echo =======================================================
 goto end
 

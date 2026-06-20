@@ -26,20 +26,16 @@ scripts\run_all.bat
 
 *Lưu ý: Lệnh trên sẽ tự động khởi chạy Ollama Server, Backend Gateway, 4 AI Agents và Frontend Vite trong các cửa sổ terminal riêng biệt.*
 
-Kiểm tra tất cả đã chạy:
+Kiểm tra tất cả đã chạy thủ công:
 ```cmd
-scripts\check_health.bat
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8101/health
+curl http://127.0.0.1:8102/health
+curl http://127.0.0.1:8103/health
+curl http://127.0.0.1:8104/health
 ```
 
-Kết quả mong đợi:
-```
-[Backend]   ✓ http://127.0.0.1:8000/health → {"status":"ok"}
-[Summarizer]✓ http://127.0.0.1:8101/health → {"status":"ok"}
-[Trend]     ✓ http://127.0.0.1:8102/health → {"status":"ok"}
-[Q&A]       ✓ http://127.0.0.1:8103/health → {"status":"ok"}
-[TTS]       ✓ http://127.0.0.1:8104/health → {"status":"ok"}
-[Frontend]  ✓ http://localhost:5173
-```
+Kết quả mong đợi cho mỗi endpoint là phản hồi dạng JSON chứa `{"status":"ok"}` hoặc tương tự, và Frontend Vite chạy bình thường tại `http://localhost:5173`.
 
 ---
 
@@ -162,12 +158,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/digests/trigger
 curl -X POST http://127.0.0.1:8000/api/v1/trend/analyze
 ```
 
-### Test pipeline đầy đủ
-```cmd
-scripts\test_full_pipeline.bat
-```
 
----
 
 ## Lưu ý cho người demo
 

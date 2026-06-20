@@ -147,11 +147,7 @@ npm run dev
 
 ## 4. Kiểm tra sức khỏe hệ thống
 
-```cmd
-scripts\check_health.bat
-```
-
-Hoặc thủ công:
+Kiểm tra thủ công qua các endpoint health check của hệ thống:
 ```cmd
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/api/v1/system/db-health
@@ -303,13 +299,10 @@ ERROR: [Errno 10048] error while attempting to bind on address
 
 **Cách xử lý theo thứ tự:**
 ```cmd
-# Bước 1: Xem port nào đang bị chiếm và PID nào
-scripts\check_ports.bat
-
-# Bước 2: Kill toàn bộ process trên project ports
+# Bước 1: Kill toàn bộ process trên project ports
 scripts\kill_project_ports.bat
 
-# Bước 3: Khởi chạy lại hệ thống
+# Bước 2: Khởi chạy lại hệ thống
 scripts\run_all.bat
 ```
 
@@ -354,8 +347,7 @@ scripts\run_all.bat --frontend
 
 | Script | Chức năng |
 |---|---|
-| `scripts\check_ports.bat` | Hiển thị trạng thái (free/occupied) + PID cho port 8000, 8101-8104, 5173. **Không kill gì cả.** |
-| `scripts\kill_project_ports.bat` | Kill process LISTENING trên các port trên. In kết quả kill từng port. |
+| `scripts\kill_project_ports.bat` | Kill process LISTENING trên các port của project. In kết quả kill từng port. |
 
 ---
 

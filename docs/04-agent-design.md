@@ -267,21 +267,15 @@ Trả về base64 mock audio (không cần GPU/model nặng)
 
 ## 6. Khởi chạy Agent
 
-```cmd
-# Từ thư mục gốc dự án
-scripts\run_agents.bat
+### Khởi chạy độc lập (để phát triển/debug)
 
-# Hoặc từng agent riêng:
-scripts\run_summarizer_agent.bat
-scripts\run_trend_agent.bat
-scripts\run_qa_agent.bat
-scripts\run_tts_agent.bat
+Các Agent có thể được chạy cùng nhau thông qua file batch:
+
+```cmd
+scripts\run_all.bat --agents
 ```
 
-Kiểm tra sức khỏe:
-```cmd
-scripts\check_health.bat
-```
+Hoặc chạy thủ công bằng cách kích hoạt môi trường ảo riêng biệt của từng Agent trong thư mục `agents/<agent_name>/.venv` và chạy lệnh khởi động tương ứng.
 
 ---
 
