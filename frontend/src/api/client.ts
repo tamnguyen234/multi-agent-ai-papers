@@ -9,7 +9,7 @@ const client = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 180000,
 });
 
 // Interceptor to inject the access token into the Authorization header
@@ -31,15 +31,15 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     const originalRequest = error.config;
-    
+
     if (error.response && error.response.status === 401) {
       const isLogin = originalRequest.url && originalRequest.url.includes('/auth/login');
       const isRegister = originalRequest.url && originalRequest.url.includes('/auth/register');
-      
+
       // If we encounter a 401 on protected requests (excluding login/register attempts)
       if (!isLogin && !isRegister) {
         localStorage.removeItem('access_token');
-        
+
         // Prevent redirect loop if already on login/register pages
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           // Dispatch a custom event to notify AuthContext to clear local state without circular dependency

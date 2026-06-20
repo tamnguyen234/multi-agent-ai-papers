@@ -4,7 +4,23 @@ echo =======================================================
 echo Starting environment setup for AI Paper Multi-Agent System...
 echo =======================================================
 
+:: Determine project root
 cd /d "%~dp0.."
+
+:: Set target requirements file based on arguments
+set "REQ_FILE=requirements-health.txt"
+set "MODE_NAME=Health-check (Skeleton) mode"
+if "%1"=="--full" (
+    set "REQ_FILE=requirements.txt"
+    set "MODE_NAME=Full dependencies mode"
+)
+if "%1"=="full" (
+    set "REQ_FILE=requirements.txt"
+    set "MODE_NAME=Full dependencies mode"
+)
+
+echo Setup Mode: %MODE_NAME%
+echo.
 
 :: 1. Copy .env files from .env.example if they do not exist
 echo [1/3] Copying environment configurations...
@@ -84,9 +100,9 @@ if %ERRORLEVEL% neq 0 (
     goto error
 )
 
-:: 3. Create Agent virtual environments and install requirements-health.txt
+:: 3. Create Agent virtual environments and install requirements
 echo.
-echo [3/3] Setting up virtual environments for AI Agents (Health-check mode)...
+echo [3/3] Setting up virtual environments for AI Agents (%MODE_NAME%)...
 
 :: Loop helper to setup each agent
 for %%A in (summarizer_agent trend_agent qa_agent tts_agent) do (
@@ -113,8 +129,8 @@ for %%A in (summarizer_agent trend_agent qa_agent tts_agent) do (
         goto error
     )
 
-    echo Installing health dependencies for agents/%%A...
-    agents\%%A\.venv\Scripts\pip.exe install -r agents\%%A\requirements-health.txt
+    echo Installing dependencies (%REQ_FILE%) for agents/%%A...
+    agents\%%A\.venv\Scripts\pip.exe install -r agents\%%A\%REQ_FILE%
     if %ERRORLEVEL% neq 0 (
         echo ERROR: Failed to install dependencies for agents/%%A.
         goto error

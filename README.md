@@ -36,9 +36,14 @@ DATABASE_URL=mysql+pymysql://root:MAT_KHAU_CUA_BAN@localhost:3306/ai_papers
 
 ### 2. Setup tự động (venv & dependencies)
 Khởi tạo các môi trường ảo Python cho backend và các agents, đồng thời cài đặt các thư viện cần thiết:
-```cmd
-scripts\setup_env.bat
-```
+*   Cài đặt chế độ **Health-check** (mặc định):
+    ```cmd
+    scripts\setup_env.bat
+    ```
+*   Cài đặt chế độ **Full** (đầy đủ cho Real Mode):
+    ```cmd
+    scripts\setup_env.bat --full
+    ```
 
 ### 3. Khởi tạo Database
 Tạo cơ sở dữ liệu MySQL và áp dụng migrations:
@@ -50,24 +55,15 @@ cd ..
 ```
 
 ### 4. Khởi chạy toàn bộ hệ thống
-Lần lượt khởi chạy các thành phần theo thứ tự sau:
-
-1. **Khởi chạy Ollama Portable**:
-   ```cmd
-   scripts\run_ollama.bat
-   ```
-2. **Khởi chạy Backend Gateway**:
-   ```cmd
-   scripts\run_backend.bat
-   ```
-3. **Khởi chạy toàn bộ AI Agents (Summarizer, Trend, QA, TTS)**:
-   ```cmd
-   scripts\run_agents.bat
-   ```
-4. **Khởi chạy Frontend**:
-   ```cmd
-   scripts\run_frontend.bat
-   ```
+Khởi chạy toàn bộ các thành phần hệ thống chỉ bằng một lệnh duy nhất:
+```cmd
+scripts\run_all.bat
+```
+*Lưu ý: Bạn có thể chọn khởi chạy riêng lẻ từng dịch vụ bằng cách truyền tham số:*
+- Chỉ chạy Ollama: `scripts\run_all.bat --ollama`
+- Chỉ chạy Backend Gateway: `scripts\run_all.bat --backend`
+- Chỉ chạy 4 AI Agents: `scripts\run_all.bat --agents`
+- Chỉ chạy Frontend: `scripts\run_all.bat --frontend`
 
 ---
 
@@ -81,7 +77,7 @@ Hệ thống được cấu hình chạy hoàn toàn bằng **dữ liệu bài b
 ### Lệnh khởi tạo/tái tạo bộ dữ liệu 100 bài báo thật
 Nếu bạn muốn tải lại hoặc tạo mới bộ dữ liệu mô phỏng 20 ngày chạy liên tục (mỗi ngày 5 bài báo thật):
 ```cmd
-scripts\backfill_20_days.bat --days 20 --per-day 5 --force
+backend\.venv\Scripts\python.exe backend/scripts/backfill_arxiv_daily_digests.py --days 20 --per-day 5 --force
 ```
 
 ### Lazy Audio Abstract Generation

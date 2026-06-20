@@ -1,47 +1,288 @@
 # 04. Thiết kế các AI Agents (Agent Design)
 
-Mô tả chi tiết kiến trúc bên trong và cơ chế hoạt động của từng Agent chuyên biệt trong hệ thống.
+> **Tài liệu phiên bản**: Task 20 – Final Report  
+> **Ngày cập nhật**: 2026-06-20
 
 ---
 
-## 1. Summarizer Agent (Tác tử thu thập & tóm tắt)
-- **Mục tiêu**: Quét nguồn dữ liệu arXiv RSS hàng ngày, chọn lọc bài báo AI tiêu biểu và sinh tóm tắt học thuật chất lượng cao.
-- **Công nghệ**:
-  - `feedparser` để đọc RSS Feed từ arXiv.
-  - Sử dụng mô hình `BART-large-CNN` hoặc `T5` thông qua thư viện `transformers` của Hugging Face để sinh tóm tắt (Abstractive Summarization).
-- **Đầu vào**: Tần suất cào (Daily), Từ khóa lọc (`AI`, `Computer Vision`, `Natural Language Processing`, `Multi-Agent`).
-- **Đầu ra**: Tiêu đề, danh sách tác giả, tóm tắt gốc, tóm tắt thu gọn dạng markdown.
+## Tổng quan
+
+Hệ thống có 4 AI Agent chạy độc lập như microservice FastAPI. Backend Gateway orchestrate (điều phối) tất cả – Frontend **không** bao giờ gọi trực tiếp Agent.
+
+```
+Frontend → Backend Gateway → [Summarizer | Trend | Q&A | TTS] Agent
+```
+
+Mỗi Agent:
+- Có endpoint `/health` trả về `{"status": "ok"}`
+- Có biến môi trường `MODE` để chuyển đổi giữa `real` và `mock_fallback`
+- Chạy venv riêng với requirements.txt riêng
 
 ---
 
-## 2. Trend Agent (Tác tử phân tích xu hướng)
-- **Mục tiêu**: Cluster các bài báo đã tải để tìm ra xu hướng chủ đề công nghệ nổi bật trong tuần/tháng.
-- **Công nghệ**:
-  - `Sentence Transformers` để tạo embedding cho abstracts bài báo.
-  - `UMAP` để giảm số chiều vector.
-  - `HDBSCAN` để phân cụm mật độ.
-  - `BERTopic` để sinh nhãn chủ đề tự động cho từng cụm (Topic Modeling).
-- **Đầu vào**: Tập hợp các abstracts của bài báo lưu trong DB.
-- **Đầu ra**: Biểu đồ phân cụm chủ đề, tỷ lệ phần trăm phân bố chủ đề nóng theo thời gian.
+## 1. Summarizer Agent (Port 8101)
+
+### Nhiệm vụ
+
+Thu thập các bài báo AI nổi bật từ **arXiv RSS** hàng ngày, lọc và sinh tóm tắt học thuật.
+
+### Cấu hình
+
+| Biến môi trường | Mô tả | Giá trị mẫu |
+|---|---|---|
+| `SUMMARIZER_MODE` | `real` hoặc `mock_fallback` | `mock_fallback` |
+| `ARXIV_CATEGORIES` | Danh mục arXiv cần theo dõi | `cs.AI,cs.CL,cs.LG,cs.CV` |
+| `ARXIV_MAX_RESULTS` | Số bài tối đa cào/ngày | `50` |
+| `ARXIV_DAYS_BACK` | Số ngày nhìn lại | `2` |
+| `SUMMARY_MAX_SENTENCES` | Số câu tóm tắt tối đa | `3` |
+| `SUMMARY_MAX_CHARS` | Ký tự tóm tắt tối đa | `700` |
+
+### API Endpoints nội bộ
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/health` | Health check |
+| POST | `/summarize` | Lấy top papers từ arXiv và tóm tắt |
+
+### Luồng xử lý (real mode)
+
+```
+Backend POST /summarize
+  ↓
+Agent: feedparser → arXiv RSS Feed
+  ↓
+Lọc theo ARXIV_CATEGORIES, sắp xếp theo score (citations/relevance)
+  ↓
+Chọn top 5 papers nổi bật
+  ↓
+Với mỗi paper: dùng transformers (BART/T5) sinh summary
+  ↓
+Trả về: [{ arxiv_id, title, authors, abstract, summary, score, pdf_url }]
+  ↓
+Backend lưu vào DB (papers table) + tạo digest ngày hôm nay
+```
+
+### Luồng xử lý (mock_fallback mode)
+
+```
+Backend POST /summarize
+  ↓
+Agent trả về dữ liệu mock cố định (không gọi arXiv)
+  ↓
+Backend lưu mock data vào DB
+```
+
+### Ghi chú quan trọng
+
+- Timeout gọi Summarizer: **120 giây** (vì download model nặng lần đầu)
+- Mode `mock_fallback` dùng cho demo nhanh không cần model AI
 
 ---
 
-## 3. Q&A Agent (Tác tử hỏi đáp RAG)
-- **Mục tiêu**: Trả lời các câu hỏi chuyên sâu của người dùng về nội dung cụ thể trong file PDF bài báo.
-- **Công nghệ**:
-  - `pymupdf4llm` trích xuất văn bản từ file PDF giữ nguyên cấu trúc Markdown.
-  - `LangChain` quản lý chu trình RAG (Retrieval-Augmented Generation).
-  - `FAISS` lưu trữ vector database cục bộ của từng bài báo.
-  - Kết nối mô hình LLM cục bộ qua `Ollama` (ví dụ model `llama3` hoặc `mistral`).
-- **Đầu vào**: ID bài báo + Câu hỏi của người dùng.
-- **Đầu ra**: Phản hồi bằng chữ kèm theo các đoạn trích dẫn nguồn từ tài liệu gốc.
+## 2. Trend Agent (Port 8102)
+
+### Nhiệm vụ
+
+Phân tích cụm chủ đề (Topic Modeling) từ các abstracts bài báo đã lưu trong DB.
+
+### Cấu hình
+
+| Biến môi trường | Mô tả | Giá trị mẫu |
+|---|---|---|
+| `TREND_MODE` | `bertopic` hoặc `rule_based_fallback` | `rule_based_fallback` |
+| `TREND_EMBEDDING_MODEL` | Model sentence-transformers | `all-MiniLM-L6-v2` |
+| `TREND_MIN_TOPIC_SIZE` | Số paper tối thiểu mỗi topic | `2` |
+| `TREND_TOP_N_WORDS` | Số từ khóa đại diện mỗi topic | `8` |
+| `TREND_UMAP_N_NEIGHBORS` | UMAP neighbors | `5` |
+| `TREND_HDBSCAN_MIN_CLUSTER_SIZE` | HDBSCAN min cluster | `2` |
+
+### API Endpoints nội bộ
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/health` | Health check |
+| POST | `/analyze` | Nhận abstracts, trả về topic clusters |
+
+### Luồng xử lý (bertopic mode)
+
+```
+Backend POST /analyze  (body: [{ paper_id, abstract }])
+  ↓
+Agent: Sentence-Transformers → vector embeddings cho mỗi abstract
+  ↓
+UMAP: Giảm số chiều vector (high-dim → 5D)
+  ↓
+HDBSCAN: Phân cụm mật độ tự động
+  ↓
+BERTopic: Trích xuất từ khóa đại diện mỗi cụm
+  ↓
+Trả về: [{ topic_name, keywords, paper_ids, confidence_scores }]
+  ↓
+Backend: lưu topics + paper_topics vào DB
+```
+
+### Luồng xử lý (rule_based_fallback mode)
+
+```
+Backend POST /analyze
+  ↓
+Agent: dùng danh sách từ khóa cố định (LLM, Vision, NLP...)
+Khớp từ khóa với abstract → phân loại topic thủ công
+  ↓
+Trả về topic assignments (không cần model AI nặng)
+```
 
 ---
 
-## 4. TTS Agent (Tác tử chuyển đổi giọng nói)
-- **Mục tiêu**: Chuyển đổi tóm tắt bài báo và nội dung phản hồi chat thành file âm thanh chất lượng tốt.
-- **Công nghệ**:
-  - Thư viện `transformers` chạy các mô hình TTS như Bark hoặc VITS.
-  - Thư viện tiếng Việt `vieneu` hoặc các giải pháp TTS tiếng Việt chuyên biệt giúp phát âm tự nhiên.
-- **Đầu vào**: Chuỗi văn bản thuần (Text).
-- **Đầu ra**: File âm thanh định dạng `.wav` hoặc `.mp3` lưu tại thư mục `./data/audio_abstract/` hoặc `./data/audio_chat_message/`.
+## 3. Q&A Agent (Port 8103)
+
+### Nhiệm vụ
+
+Trả lời câu hỏi của người dùng về nội dung bài báo bằng kỹ thuật **RAG (Retrieval-Augmented Generation)**.
+
+### Cấu hình
+
+| Biến môi trường | Mô tả | Giá trị mẫu |
+|---|---|---|
+| `QA_MODE` | `real` hoặc `mock_fallback` | `mock_fallback` |
+| `OLLAMA_BASE_URL` | URL Ollama LLM server | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Tên model Ollama | `llama3` hoặc `mistral` |
+| `QA_AGENT_URL` | URL của chính agent (set trong backend) | `http://127.0.0.1:8103` |
+
+### API Endpoints nội bộ
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/health` | Health check |
+| POST | `/ask` | Nhận câu hỏi + paper info, trả lời RAG |
+
+### Luồng xử lý (real mode)
+
+```
+Backend POST /ask
+  body: { paper_id, pdf_path, title, abstract, summary, question, arxiv_id }
+  ↓
+Q&A Agent: kiểm tra FAISS index (data/faiss_indexes/<paper_id>/)
+  │
+  ├── Nếu chưa có index:
+  │     pymupdf4llm: đọc PDF → extract text (Markdown)
+  │     LangChain: chunk text → Sentence-Transformers embed → lưu FAISS index
+  │
+  └── Nếu đã có index: load FAISS index
+  ↓
+LangChain RetrievalQA:
+  - Vector similarity search (top-k chunks)
+  - Build prompt: context + question
+  - Gọi Ollama LLM (llama3/mistral)
+  ↓
+Trả về: { answer, mode, sources: [{ page, content }] }
+  ↓
+Backend: lưu user_message + assistant_message vào DB
+```
+
+### Luồng xử lý (mock_fallback mode)
+
+```
+Backend POST /ask
+  ↓
+Agent: trả về câu trả lời mock với mode="mock_fallback"
+Không đọc PDF, không cần Ollama
+```
+
+### Lưu ý quan trọng
+
+- FAISS index được tạo lần đầu khi user hỏi → **có thể chậm** lần đầu cho mỗi paper
+- PDF phải đã được tải về `data/paper_pdf/` trước khi Q&A
+- Index được cache tại `data/faiss_indexes/<paper_id>/`
+- Ollama phải chạy riêng ở cổng 11434
+
+---
+
+## 4. TTS Agent (Port 8104)
+
+### Nhiệm vụ
+
+Chuyển đổi văn bản (tóm tắt bài báo / câu trả lời chat) thành file **audio `.wav`**.
+
+### Cấu hình
+
+| Biến môi trường | Mô tả | Giá trị mẫu |
+|---|---|---|
+| `TTS_MODE` | `real` hoặc `mock_fallback` | `mock_fallback` |
+| `TTS_MODEL` | Model TTS (SpeechT5/Bark/VITS) | `microsoft/speecht5_tts` |
+
+### API Endpoints nội bộ
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/health` | Health check |
+| POST | `/synthesize` | Nhận text, trả về audio base64 |
+
+### Luồng xử lý (real mode)
+
+```
+Backend POST /synthesize
+  body: { text, voice, language, speed }
+  ↓
+TTS Agent: transformers pipeline (SpeechT5/Bark)
+  text → audio waveform → .wav bytes
+  ↓
+Encode audio → base64 string
+  ↓
+Trả về: { audio_base64, file_extension, timestamps, duration_seconds, mode }
+  ↓
+Backend: decode base64 → lưu file .wav vào data/audio_chat_message/
+Backend: cập nhật tts_path + tts_timestamps trong chat_messages DB
+```
+
+### Luồng xử lý (mock_fallback mode)
+
+```
+Backend POST /synthesize
+  ↓
+Agent: tạo file .wav tối giản (silence/beep) làm placeholder
+Trả về base64 mock audio (không cần GPU/model nặng)
+```
+
+### Ghi chú
+
+- Audio abstract cho bài báo: lưu tại `data/audio_abstract/`
+- Audio chat message: lưu tại `data/audio_chat_message/`
+- File `.wav` không commit lên Git
+
+---
+
+## 5. Tổng hợp Modes & Trade-offs
+
+| Agent | Mode Real | Mode Fallback | Trade-off |
+|---|---|---|---|
+| Summarizer | arXiv RSS + BART/T5 | Dữ liệu mock cố định | Real cần GPU + download model |
+| Trend | BERTopic (ML) | Rule-based keyword matching | Real cần 4GB+ RAM |
+| Q&A | RAG + Ollama LLM | Mock answer | Real cần Ollama server + 8GB+ RAM |
+| TTS | SpeechT5/Bark | Silence placeholder | Real cần GPU hoặc CPU chậm |
+
+**Khuyến nghị cho demo:** Dùng `mock_fallback` để demo nhanh, chuyển sang `real` khi có đủ phần cứng.
+
+---
+
+## 6. Khởi chạy Agent
+
+```cmd
+# Từ thư mục gốc dự án
+scripts\run_agents.bat
+
+# Hoặc từng agent riêng:
+scripts\run_summarizer_agent.bat
+scripts\run_trend_agent.bat
+scripts\run_qa_agent.bat
+scripts\run_tts_agent.bat
+```
+
+Kiểm tra sức khỏe:
+```cmd
+scripts\check_health.bat
+```
+
+---
+
+*Tham khảo: [docs/02-system-architecture.md](02-system-architecture.md) | [docs/05-api-design.md](05-api-design.md)*
