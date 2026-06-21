@@ -1,30 +1,56 @@
-# AI Paper Multi-Agent System
+# AI Papers Multi-Agent System
 
-This is a comprehensive multi-agent system designed to automatically fetch, translate, analyze, and synthesize audio abstracts for the daily top trending AI papers from Hugging Face.
+A powerful, microservices-based Multi-Agent system for collecting, translating, analyzing, synthesizing audio, and chatting with the latest AI research papers from Hugging Face.
 
-## Architecture & Agents
+## 🚀 Features
 
-The system leverages a microservices architecture where specialized agents handle heavy processing, leaving the backend as a lightweight orchestrator and gateway.
+- **Automated Daily Pipeline**: Fetches trending AI papers daily, translates abstracts to Vietnamese, and synthesizes audio summaries.
+- **Microservice Architecture**: Decoupled agents (Translate, TTS, Trend, QA) communicate via REST APIs, orchestrated by a central FastAPI backend.
+- **Trend Analysis**: Automatically clusters daily papers into emerging scientific topics using SentenceTransformers and UMAP dimensionality reduction.
+- **RAG Chat (QA Agent)**: Chat locally with your papers using Ollama and Llama 3 models.
+- **Email Digest**: Daily automated email newsletters with the top trending papers.
 
-### 1. `agents/daily_paper_audio_pipeline/`
-The core orchestration workflow that runs daily at 2:00 AM.
-- Fetches the top 5 trending papers from Hugging Face Daily Papers.
-- **Translate Agent**: Translates the English abstract to Vietnamese.
-- **TTS Agent** (located inside `daily_paper_audio_pipeline/tts_agent`): Synthesizes high-quality Vietnamese audio from the translated abstract.
+## 🏗️ System Architecture
 
-### 2. `agents/trend_agent/`
-A standalone AI microservice dedicated to topic modeling and clustering.
-- Uses `BERTopic`, `sentence-transformers`, `UMAP`, and `HDBSCAN` to cluster paper abstracts.
-- Exposes a FastAPI endpoint (`/analyze`) for the backend to request trend analysis.
-- Powered by local LLMs (e.g., Llama 3.2 via Ollama) to generate human-readable topic labels.
+The project consists of 5 main components:
 
-### 3. `agents/qa_agent/`
-A Retrieval-Augmented Generation (RAG) agent that allows users to chat with the PDF content of the papers.
+1. **Backend API Gateway (FastAPI - Port 8000)**: Orchestrates the system, serves the frontend, handles database interactions, and runs background jobs.
+2. **Frontend (React + Vite - Port 5173)**: Beautiful, responsive UI to view papers, audio, trends, and chat.
+3. **Daily Paper Audio Pipeline (Standalone)**: A robust pipeline agent that queries Hugging Face, translates text via VinAI, and generates TTS audio.
+4. **Trend Agent (FastAPI - Port 8005)**: A lightweight microservice that processes text embeddings and applies UMAP to cluster papers into topics.
+5. **QA Agent (Ollama)**: Local LLM integration for Retrieval-Augmented Generation.
 
-## Getting Started
+## ⚙️ Prerequisites
 
-1. **Start the Agents**: Navigate to each agent directory and start their respective FastAPI servers.
-2. **Start the Backend**: `cd backend && uvicorn app.main:app --reload`
-3. **Start the Frontend**: `cd frontend && npm run dev`
+- Python 3.10+
+- Node.js 18+
+- MySQL Server 8.0+
+- Ollama (installed locally with `llama3.2:1b` model for QA and Trend)
 
-*Ensure `.env` configuration files map the correct URLs for the agents (e.g., `TREND_AGENT_URL`, `QA_AGENT_URL`, `TTS_AGENT_URL`).*
+## 🛠️ Installation & Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/tamnguyen234/multi-agent-ai-papers.git
+   cd multi-agent-ai-papers
+   ```
+
+2. **Run the setup script:**
+   This will install all Python and Node.js dependencies, create `.venv`s, and set up `.env` files.
+   ```bash
+   cd scripts
+   setup_env.bat
+   ```
+
+3. **Database Setup:**
+   Ensure MySQL is running, then execute the `reset_db.sql` script to create the schema.
+
+4. **Start the System:**
+   You can start all components simultaneously using the provided batch script:
+   ```bash
+   cd scripts
+   run_all.bat
+   ```
+
+## 📜 License
+MIT License
