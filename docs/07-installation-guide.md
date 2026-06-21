@@ -178,7 +178,7 @@ TTS_MODE=mock_fallback
 ```env
 SUMMARIZER_MODE=real       # Cần: transformers, torch, ~4GB model
 TREND_MODE=bertopic        # Cần: bertopic, umap-learn, hdbscan
-QA_MODE=real               # Cần: Ollama server + llama3/mistral model
+QA_MODE=real               # Cần: Ollama server + qwen3.5:4b + nomic-embed-text
 TTS_MODE=real              # Cần: torch, transformers TTS model
 ```
 
@@ -186,7 +186,8 @@ TTS_MODE=real              # Cần: torch, transformers TTS model
 - Ollama server chạy tại `http://localhost:11434`
   ```cmd
   ollama serve
-  ollama pull llama3
+  ollama pull qwen3.5:4b
+  ollama pull nomic-embed-text
   ```
 - GPU CUDA (tùy chọn nhưng giúp tăng tốc đáng kể)
 
@@ -248,7 +249,7 @@ URL truy cập frontend: `http://127.0.0.1:8000/static/data/paper_pdf/2312.01234
 > - `.env` files (bất kỳ cấp nào)
 > - File PDF trong `data/paper_pdf/`
 > - File audio trong `data/audio_*/`
-> - FAISS indexes trong `data/faiss_indexes/`
+> - FAISS indexes trong `data/indices_v2/`
 > - `node_modules/`, `.venv/`, `dist/`, `build/`
 
 Kiểm tra trước khi commit:

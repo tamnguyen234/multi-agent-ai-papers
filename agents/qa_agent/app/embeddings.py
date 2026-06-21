@@ -25,16 +25,16 @@ class EmbeddingEngine:
             return self._model
 
         self._tried_loading = True
-        logger.info(f"Initializing SentenceTransformer model using {settings.QA_EMBEDDING_MODEL}...")
+        logger.info(f"Initializing Ollama embedding model using {settings.QA_EMBEDDING_MODEL}...")
         try:
-            # Lazy import to avoid loading during fast health checks
-            from langchain_community.embeddings import HuggingFaceEmbeddings
+            # Lazy import to keep health checks light and avoid requiring Ollama until RAG runs.
+            from langchain_ollama import OllamaEmbeddings
             
-            self._model = HuggingFaceEmbeddings(
-                model_name=settings.QA_EMBEDDING_MODEL,
-                encode_kwargs={'normalize_embeddings': True}
+            self._model = OllamaEmbeddings(
+                base_url=settings.QA_OLLAMA_BASE_URL,
+                model=settings.QA_EMBEDDING_MODEL
             )
-            logger.info("SentenceTransformer model loaded successfully.")
+            logger.info("Ollama embedding model initialized successfully.")
             return self._model
         except Exception as e:
             self._load_error = RuntimeError(f"Embedding model load failed: {str(e)}")

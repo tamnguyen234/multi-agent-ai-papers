@@ -44,7 +44,7 @@ export async function getChatMessages(sessionId: number | string): Promise<ChatM
  */
 export async function sendChatMessage(payload: SendChatMessageRequest): Promise<ChatAskResponse> {
   const response = await client.post<ChatAskResponse>('/chat/messages', payload, {
-    timeout: 180000, // 180s — LLM inference can be slow (Q&A Agent / Ollama)
+    timeout: 620000, // Agent2-style Ollama chat can run for up to ~600s
   });
   return response.data;
 }

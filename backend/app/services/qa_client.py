@@ -5,12 +5,12 @@ from app.core.config import settings
 def ask_question(payload: dict) -> dict:
     """
     Call the Q&A Agent to ask a question about a paper.
-    Timeout is set to 180 seconds to allow for LLM inference time (Ollama/local models).
+    Timeout follows the Agent2-style Ollama chat timeout budget.
     """
     url = f"{settings.QA_AGENT_URL.rstrip('/')}/qa/ask"
     
     try:
-        response = httpx.post(url, json=payload, timeout=180.0)
+        response = httpx.post(url, json=payload, timeout=620.0)
         response.raise_for_status()
     except httpx.ConnectError:
         raise HTTPException(
@@ -20,7 +20,7 @@ def ask_question(payload: dict) -> dict:
     except httpx.TimeoutException:
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Request to Q&A Agent timed out after 180 seconds."
+            detail="Request to Q&A Agent timed out after 620 seconds."
         )
     except Exception as e:
         raise HTTPException(

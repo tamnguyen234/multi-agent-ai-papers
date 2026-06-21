@@ -18,6 +18,20 @@ from app.schemas.chat_schema import (
 
 router = APIRouter()
 
+def _build_recent_qa_history(messages: List[ChatMessage], limit: int = 3) -> List[dict]:
+    """Return the last completed user/assistant exchanges in Agent2 history shape."""
+    history = []
+    pending_question = None
+
+    for message in messages:
+        if message.role == "user":
+            pending_question = message.content
+        elif message.role == "assistant" and pending_question:
+            history.append({"q": pending_question, "a": message.content})
+            pending_question = None
+
+    return history[-limit:]
+
 # --- New Route Endpoints for Task 9 ---
 
 @router.post("/sessions", response_model=ChatSessionResponse, status_code=status.HTTP_201_CREATED)
@@ -108,6 +122,11 @@ def post_chat_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Paper associated with this chat session not found."
         )
+
+    previous_messages = db.query(ChatMessage).filter(
+        ChatMessage.chat_session_id == session.id
+    ).order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc()).all()
+    qa_history = _build_recent_qa_history(previous_messages, limit=3)
         
     # 1. Create and add user message (flushed but not committed)
     user_message = ChatMessage(
@@ -130,7 +149,8 @@ def post_chat_message(
             "abstract": paper.abstract,
             "summary": paper.summary,
             "question": message_in.question,
-            "arxiv_id": paper.arxiv_id
+            "arxiv_id": paper.arxiv_id,
+            "history": qa_history
         }
         agent_res = ask_question(payload)
         
@@ -207,5 +227,4 @@ def chat_with_paper(paper_id: int, message: str, db: Session = Depends(get_db)):
 def get_chat_history(paper_id: int, db: Session = Depends(get_db)):
     """Fetch previous chat logs for a paper."""
     return {"history": []}
-
 

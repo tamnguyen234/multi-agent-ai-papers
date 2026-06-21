@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # Global cache for reranker model
 _reranker_model = None
 
-def perform_rag_qa(paper_id: int, pdf_path: str, question: str) -> dict:
+def perform_rag_qa(paper_id: int, pdf_path: str, question: str, history: list[dict] | None = None) -> dict:
     """
     Executes advanced RAG pipeline: path resolution, PDF layout-aware loading,
     chunking, vector indexing (FAISS), candidate retrieval, CrossEncoder reranking
@@ -26,13 +26,15 @@ def perform_rag_qa(paper_id: int, pdf_path: str, question: str) -> dict:
     
     # 3. Chunk (with tables protection and heading normalization)
     chunks = chunk_pages(pages_data, paper_id)
+    if not chunks:
+        raise ValueError(f"No chunks extracted from PDF for paper {paper_id}")
     
-    # 4. Vector Store (FAISS index using primary embedding model: sentence-transformers/all-MiniLM-L6-v2)
+    # 4. Vector Store (FAISS index using primary embedding model: Ollama nomic-embed-text)
     db, saved_chunks = load_or_build_index(paper_id, resolved_path, chunks)
     
-    # 5. Retrieve candidates (fetch twice top_k or at least 10 for reranking)
+    # 5. Retrieve candidates: Agent2 behavior fetches 6 chunks, then reranks down to top_k=3.
     top_k = settings.QA_TOP_K
-    initial_k = max(top_k * 2, 10)
+    initial_k = settings.QA_INITIAL_K
     
     logger.info(f"Retrieving top {initial_k} candidate chunks from FAISS...")
     docs_and_scores = db.similarity_search_with_score(question, k=initial_k)
@@ -92,7 +94,7 @@ def perform_rag_qa(paper_id: int, pdf_path: str, question: str) -> dict:
         })
         
     # 7. Generate answer using LLM
-    answer = generate_llm_answer(question, context_chunks)
+    answer = generate_llm_answer(question, context_chunks, history=history)
     
     return {
         "answer": answer,

@@ -58,7 +58,6 @@ def health_check():
     return {
         "status": "ok",
         "service": "qa_agent",
-        "mode": settings.QA_MODE,
         "embedding_model_loaded": EmbeddingEngine.get_instance().is_loaded(),
         "llm_provider": settings.QA_LLM_PROVIDER,
         "ollama_base_url": settings.QA_OLLAMA_BASE_URL,

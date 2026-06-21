@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     PAPER_PDF_DIR: str = "./data/paper_pdf"
     AUDIO_ABSTRACT_DIR: str = "./data/audio_abstract"
     AUDIO_CHAT_MESSAGE_DIR: str = "./data/audio_chat_message"
-    FAISS_INDEX_DIR: str = "./data/faiss_indexes"
+    FAISS_INDEX_DIR: str = "./data/indices_v2"
     
     # Agent service base URLs
     SUMMARIZER_AGENT_URL: str = "http://127.0.0.1:8101"

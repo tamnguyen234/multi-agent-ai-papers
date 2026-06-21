@@ -62,7 +62,7 @@ Hệ thống **AI Paper Multi-Agent System** được thiết kế theo mô hìn
 │  - topics        │          │  ┌──────────────────────────────────────┐  │
 │  - paper_topics  │          │  │ Q&A Agent           Port 8103         │  │
 │  - notifications │          │  │ LangChain RAG + FAISS + pymupdf4llm │  │
-└──────────────────┘          │  │ Ollama LLM (llama3/mistral)          │  │
+└──────────────────┘          │  │ Ollama (qwen3.5 + nomic embeddings) │  │
                               │  └──────────────────────────────────────┘  │
 ┌──────────────────┐          │  ┌──────────────────────────────────────┐  │
 │  Local Storage   │          │  │ TTS Agent           Port 8104         │  │
@@ -150,7 +150,7 @@ Backend đọc mode từ biến môi trường (`SUMMARIZER_MODE`, `TREND_MODE`,
 | `data/paper_pdf/` | PDF bài báo tải từ arXiv | ✅ |
 | `data/audio_abstract/` | Audio tóm tắt bài báo | ✅ |
 | `data/audio_chat_message/` | Audio phản hồi chat | ✅ |
-| `data/faiss_indexes/` | FAISS vector index per paper | ✅ |
+| `data/indices_v2/` | FAISS vector index per paper | ✅ |
 | `data/logs/` | Log file hệ thống | ✅ |
 
 ---
