@@ -3,9 +3,10 @@ from pathlib import Path
 from app.path_resolver import resolve_pdf_path
 from app.pdf_loader import load_pdf_pages
 from app.chunking import chunk_pages
-from app.vector_store import load_or_build_index
+from app.vector_store import load_or_build_index, get_index_dir, verify_manifest, build_manifest
 from app.llm_client import generate_llm_answer
 from app.config import settings
+from app.embeddings import EmbeddingEngine
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +22,30 @@ def perform_rag_qa(paper_id: int, pdf_path: str, question: str, history: list[di
     # 1. Resolve path
     resolved_path = resolve_pdf_path(pdf_path)
     
-    # 2. Load PDF (page-by-page markdown)
-    pages_data = load_pdf_pages(str(resolved_path))
+    # 2. Try loading existing FAISS index first (skip PDF loading if index exists)
+    index_dir = get_index_dir(paper_id)
+    manifest = build_manifest(paper_id, resolved_path, settings.QA_CHUNK_SIZE, settings.QA_CHUNK_OVERLAP)
+    db = None
     
-    # 3. Chunk (with tables protection and heading normalization)
-    chunks = chunk_pages(pages_data, paper_id)
-    if not chunks:
-        raise ValueError(f"No chunks extracted from PDF for paper {paper_id}")
+    if index_dir.exists() and verify_manifest(index_dir, manifest):
+        try:
+            from langchain_community.vectorstores import FAISS
+            embedding_model = EmbeddingEngine.get_instance().load_model()
+            db = FAISS.load_local(str(index_dir), embedding_model, allow_dangerous_deserialization=True)
+            logger.info(f"✅ Loaded cached FAISS index for paper {paper_id}")
+        except Exception as e:
+            logger.warning(f"Failed to load cached index, rebuilding: {e}")
+            db = None
     
-    # 4. Vector Store (FAISS index using primary embedding model: Ollama nomic-embed-text)
-    db, saved_chunks = load_or_build_index(paper_id, resolved_path, chunks)
+    # 3. If no cached index, do full PDF loading → chunking → indexing
+    if db is None:
+        pages_data = load_pdf_pages(str(resolved_path))
+        chunks = chunk_pages(pages_data, paper_id)
+        if not chunks:
+            raise ValueError(f"No chunks extracted from PDF for paper {paper_id}")
+        db, saved_chunks = load_or_build_index(paper_id, resolved_path, chunks)
     
-    # 5. Retrieve candidates: Agent2 behavior fetches 6 chunks, then reranks down to top_k=3.
+    # 5. Retrieve candidates
     top_k = settings.QA_TOP_K
     initial_k = settings.QA_INITIAL_K
     
