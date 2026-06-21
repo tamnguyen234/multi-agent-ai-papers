@@ -25,16 +25,12 @@ def verify_manifest(index_dir: Path, manifest: dict) -> bool:
     manifest_path = index_dir / "manifest.json"
     if not manifest_path.exists():
         return False
-    try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            existing = json.load(f)
-        # Compare key manifest components including pdf_path
-        for key in ["pdf_path", "file_size", "modified_time", "embedding_model", "chunk_size", "chunk_overlap"]:
-            if existing.get(key) != manifest.get(key):
-                return False
-        return True
-    except Exception:
-        return False
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        existing = json.load(f)
+    for key in ["pdf_path", "file_size", "modified_time", "embedding_model", "chunk_size", "chunk_overlap"]:
+        if existing.get(key) != manifest.get(key):
+            return False
+    return True
 
 def load_or_build_index(paper_id: int, pdf_path: Path, chunks: List[Dict]) -> Tuple[Any, List[Dict]]:
     """
@@ -50,17 +46,10 @@ def load_or_build_index(paper_id: int, pdf_path: Path, chunks: List[Dict]) -> Tu
     
     # Check if index exists and manifest is valid
     if index_dir.exists() and verify_manifest(index_dir, manifest):
-        try:
-            # Load FAISS index safely using allow_dangerous_deserialization=True only because we validated the manifest match
-            db = FAISS.load_local(str(index_dir), embedding_model, allow_dangerous_deserialization=True)
-            
-            # Load metadata chunks
-            with open(index_dir / "metadata.json", "r", encoding="utf-8") as f:
-                saved_chunks = json.load(f)
-            return db, saved_chunks
-        except Exception as e:
-            # If load fails, fall through to build a new one
-            pass
+        db = FAISS.load_local(str(index_dir), embedding_model, allow_dangerous_deserialization=True)
+        with open(index_dir / "metadata.json", "r", encoding="utf-8") as f:
+            saved_chunks = json.load(f)
+        return db, saved_chunks
             
     # Build new index
     from langchain_core.documents import Document

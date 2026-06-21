@@ -15,7 +15,6 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Preserve legacy schema models for /index and /query placeholders
 class IndexRequest(BaseModel):
     paper_id: int
     pdf_path: str
@@ -24,37 +23,19 @@ class QueryRequest(BaseModel):
     paper_id: int
     question: str
 
-@app.get("/")
-def root():
-    return {"message": "Q&A Agent is running"}
-
 @app.get("/health")
 def health_check():
-    """
-    Return health check status.
-    Must not trigger loading embedding models or indices.
-    """
+    """Return health check status."""
     from app.embeddings import EmbeddingEngine
     from app.config import settings
     import httpx
-    
-    ollama_reachable = False
-    ollama_error = None
-    ollama_models = []
-    
+
     url = f"{settings.QA_OLLAMA_BASE_URL.rstrip('/')}/api/tags"
-    try:
-        # Use short timeout of 1.5 seconds as requested
-        response = httpx.get(url, timeout=1.5)
-        if response.status_code == 200:
-            ollama_reachable = True
-            data = response.json()
-            ollama_models = [m.get("name") for m in data.get("models", [])]
-        else:
-            ollama_error = f"Ollama returned status code {response.status_code}"
-    except Exception as e:
-        ollama_error = str(e)
-        
+    response = httpx.get(url, timeout=1.5)
+    ollama_reachable = response.status_code == 200
+    data = response.json() if ollama_reachable else {}
+    ollama_models = [m.get("name") for m in data.get("models", [])]
+
     return {
         "status": "ok",
         "service": "qa_agent",
@@ -63,8 +44,7 @@ def health_check():
         "ollama_base_url": settings.QA_OLLAMA_BASE_URL,
         "ollama_model": settings.QA_OLLAMA_MODEL,
         "ollama_reachable": ollama_reachable,
-        "ollama_error": ollama_error,
-        "ollama_models": ollama_models
+        "ollama_models": ollama_models,
     }
 
 @app.post("/index")
@@ -92,18 +72,6 @@ def qa_ask(payload: QAAskRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Question must not be empty"
         )
-        
-    try:
-        res = answer_question(payload)
-        return QAAskResponse(**res)
-    except ValueError as ve:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(ve)
-        )
-    except Exception as e:
-        logger.error(f"QA ask endpoint error: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Q&A query failed: {str(e)}"
-        )
+
+    res = answer_question(payload)
+    return QAAskResponse(**res)

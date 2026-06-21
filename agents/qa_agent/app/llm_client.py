@@ -78,13 +78,8 @@ def generate_llm_answer(question: str, context_chunks: list, history: list[dict[
         },
     }
     
-    try:
-        response = httpx.post(url, json=payload, timeout=settings.QA_OLLAMA_TIMEOUT_SECONDS)
-        response.raise_for_status()
-        data = response.json()
-        raw = data.get("message", {}).get("content", "")
-        return _strip_thinking(raw)
-    except httpx.HTTPError as he:
-        raise ValueError(f"Ollama server returned error: {str(he)}")
-    except Exception as e:
-        raise ValueError(f"Failed to communicate with Ollama: {str(e)}")
+    response = httpx.post(url, json=payload, timeout=settings.QA_OLLAMA_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    data = response.json()
+    raw = data.get("message", {}).get("content", "")
+    return _strip_thinking(raw)
