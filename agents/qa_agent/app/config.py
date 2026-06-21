@@ -11,7 +11,7 @@ class Settings:
     QA_LLM_PROVIDER = os.getenv("QA_LLM_PROVIDER", "ollama")
     QA_OLLAMA_BASE_URL = os.getenv("QA_OLLAMA_BASE_URL", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
     QA_OLLAMA_MODEL = os.getenv("QA_OLLAMA_MODEL", os.getenv("OLLAMA_MODEL", "qwen3.5:4b"))
-    QA_CHUNK_SIZE = int(os.getenv("QA_CHUNK_SIZE", "4000"))
+    QA_CHUNK_SIZE = int(os.getenv("QA_CHUNK_SIZE", "5000"))
     QA_CHUNK_OVERLAP = int(os.getenv("QA_CHUNK_OVERLAP", "800"))
     QA_TOP_K = int(os.getenv("QA_TOP_K", "3"))
     QA_INITIAL_K = int(os.getenv("QA_INITIAL_K", "6"))
