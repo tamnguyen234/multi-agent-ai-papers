@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 from typing import List, Optional, Any
 
@@ -31,12 +31,11 @@ class LazyAudioAbstractResponse(BaseModel):
 class PaperResponse(BaseModel):
     id: int
     external_id: str
-    title: str
-    abstract: str
-    summary_en: Optional[str] = None
-    summary_vi: Optional[str] = None
+    title: str = Field(..., description="Paper title")
+    abstract_en: str = Field(..., description="Abstract in English")
+    abstract_vi: Optional[str] = Field(None, description="Translated abstract in Vietnamese")
     source_url: Optional[str] = None
-    authors: Optional[List[str]] = None
+    authors: Optional[List[str]] = Field(None, description="List of authors")
     published: Optional[date] = None
     pdf_path: Optional[str] = None
     pdf_url: Optional[str] = None

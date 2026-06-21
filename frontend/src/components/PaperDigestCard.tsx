@@ -53,8 +53,8 @@ const PaperDigestCard: React.FC<PaperDigestCardProps> = ({ entry }) => {
       </div>
 
       {/* Summary */}
-      {(paper.summary_vi || paper.summary_en) && (
-        <p className="digest-card__summary">{paper.summary_vi || paper.summary_en}</p>
+      {(paper.abstract_vi || paper.abstract_en) && (
+        <p className="digest-card__summary">{paper.abstract_vi || paper.abstract_en}</p>
       )}
 
       {/* Audio player */}

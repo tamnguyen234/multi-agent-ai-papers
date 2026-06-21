@@ -22,10 +22,9 @@ CREATE TABLE users (
 CREATE TABLE papers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     external_id VARCHAR(50) NOT NULL UNIQUE,
-    title VARCHAR(500) NOT NULL,
-    abstract TEXT NOT NULL,
-    summary_en TEXT,
-    summary_vi TEXT,
+    title TEXT NOT NULL,
+    abstract_en TEXT NOT NULL,
+    abstract_vi TEXT,
     authors JSON NOT NULL,
     pdf_url VARCHAR(500),
     pdf_path VARCHAR(255),

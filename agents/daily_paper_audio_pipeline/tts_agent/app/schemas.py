@@ -16,3 +16,10 @@ class TTSResponse(BaseModel):
     timestamps: Optional[List[Any]] = Field(None, description="Mốc thời gian từ")
     mode: str = Field(..., description="Chế độ thực tế chạy")
     fallback_reason: Optional[str] = Field(None, description="Lý do fallback nếu có")
+
+class TranslateRequest(BaseModel):
+    text: str = Field(..., description="Văn bản tiếng Anh cần dịch")
+    mode: Optional[str] = Field(None, description="Chế độ chạy")
+
+class TranslateResponse(BaseModel):
+    translated_text: str = Field(..., description="Văn bản đã dịch sang tiếng Việt")

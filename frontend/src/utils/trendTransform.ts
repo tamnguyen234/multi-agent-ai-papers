@@ -43,7 +43,7 @@ export const normalizeTrendData = (rawResponse: TrendAnalyzeResponse | null | un
       return {
         id: paperId,
         title: typeof p.title === 'string' ? p.title.trim() : 'Bài báo không rõ tiêu đề',
-        abstract: typeof p.abstract === 'string' ? p.abstract.trim() : 'Không có tóm tắt.',
+        abstract_en: typeof p.abstract_en === 'string' ? p.abstract_en.trim() : 'Không có tóm tắt.',
         published: typeof p.published === 'string' ? p.published : null
       };
     });

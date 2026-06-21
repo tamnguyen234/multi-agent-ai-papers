@@ -83,9 +83,10 @@ if "!START_BACKEND!"=="1" (
 
 :: 3. AI Agents
 if "!START_AGENTS!"=="1" (
-    echo Starting AI Agents [Ports 8103-8104]...
+    echo Starting AI Agents [Ports 8005, 8103, 8104]...
+    start "Trend Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\trend_agent && .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8005"
     start "QA Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\qa_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8103"
-    start "TTS Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\tts_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8104"
+    start "Daily_paper_audio_pipeline" cmd /k "cd /d !PROJECT_ROOT!\agents\daily_paper_audio_pipeline\tts_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8104"
 )
 
 :: 4. Frontend
@@ -105,7 +106,7 @@ echo Options:
 echo   (No options)   Start everything (Ollama, Backend, Agents, Frontend)
 echo   --ollama       Start only Ollama Server
 echo   --backend      Start only Backend Gateway (Port 8000)
-echo   --agents       Start only 2 AI Agents (Ports 8103-8104)
+echo   --agents       Start only 3 AI Agents (Ports 8005, 8103, 8104)
 echo   --frontend     Start only Frontend Vite (Port 5173)
 echo   --help         Display this help message
 echo.

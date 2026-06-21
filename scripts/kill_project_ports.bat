@@ -3,10 +3,10 @@ setlocal enabledelayedexpansion
 
 echo ==========================================
 echo Killing project ports if they are in use...
-echo Ports: 8000 8103 8104 5173
+echo Ports: 8000 8005 8103 8104 5173
 echo ==========================================
 
-for %%p in (8000 8103 8104 5173) do (
+for %%p in (8000 8005 8103 8104 5173) do (
     echo.
     echo Checking port %%p...
     set "FOUND=0"

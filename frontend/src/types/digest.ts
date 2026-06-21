@@ -4,8 +4,8 @@ export interface DigestPaper {
   id: number;
   external_id: string;
   title: string;
-  summary_en: string | null;
-  summary_vi: string | null;
+  abstract_en: string;
+  abstract_vi: string | null;
   score: number;
   published: string | null; // ISO date string "YYYY-MM-DD"
   has_audio: boolean;
@@ -28,5 +28,5 @@ export interface DigestResponse {
 export interface RunDigestJobResponse {
   message: string;
   digest_id?: number;
-  papers_count?: number;
+  total_papers?: number;
 }

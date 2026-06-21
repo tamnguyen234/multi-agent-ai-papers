@@ -6,7 +6,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import numpy as np
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
@@ -16,12 +15,11 @@ from bertopic.representation import KeyBERTInspired
 from bertopic.vectorizers import ClassTfidfTransformer
 import requests
 
-from app.services.trend_model.models.schema import Paper, Category, Cluster
 
 # Init embedding model (all-MiniLM-L6-v2)
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
-def get_papers_last_30_days(db: Session):
+def get_papers_last_30_days(db):
     """Lọc dữ liệu 30 ngày gần nhất từ database"""
     thirty_days_ago = datetime.utcnow().date() - timedelta(days=30)
     papers = db.query(Paper).filter(Paper.published >= thirty_days_ago).all()
@@ -33,7 +31,7 @@ def generate_embeddings(texts: list[str]) -> np.ndarray:
     return embedding_model.encode(texts, show_progress_bar=True)
 
 # ----------------- NHÁNH 1: ZERO-SHOT CLASSIFICATION ----------------- #
-def process_zero_shot_classification(db: Session, papers: list[Paper]):
+def process_zero_shot_classification(db, papers):
     """
     Phân loại bài báo mới vào các chủ đề tạo sẵn dựa vào Cosine Similarity.
     Đầu ra: Danh sách JSON (Leaderboard) sắp xếp theo số lượng / growth rate.
@@ -131,7 +129,7 @@ def query_ollama_for_name(keywords: list[str]) -> str:
         print(f"Ollama error: {e}")
     return "Emergent Topic"
 
-def process_topic_clustering(db: Session, papers: list[Paper]):
+def process_topic_clustering(db, papers):
     """
     Sử dụng UMAP + HDBSCAN + c-TF-IDF để tìm cụm mới nổi.
     Đầu ra: Dữ liệu Đồ thị dạng Nodes & Edges (Center Graph UI).
@@ -219,7 +217,7 @@ def process_topic_clustering(db: Session, papers: list[Paper]):
         "edges": graph_edges
     }
 
-def run_full_pipeline(db: Session = None):
+def run_full_pipeline(db = None):
     """Hàm Main orchestration điều phối dữ liệu"""
     papers = []
     categories = []

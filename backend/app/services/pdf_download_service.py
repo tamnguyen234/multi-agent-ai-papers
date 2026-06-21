@@ -76,7 +76,6 @@ def download_pdf_bytes(pdf_url: str) -> bytes:
                 except ValueError as ve:
                     if "exceeds limit" in str(ve):
                         raise ve
-                    pass
             
             file_bytes = response.content
             
@@ -85,7 +84,7 @@ def download_pdf_bytes(pdf_url: str) -> bytes:
                 raise ValueError(f"PDF file size ({len(file_bytes)} bytes) exceeds limit of {settings.MAX_PDF_SIZE_MB} MB")
                 
             # Validate content-type or magic header starts with %PDF
-            content_type = response.headers.get("Content-Type", "").lower()
+            response.headers.get("Content-Type", "").lower()
             
             # Starts with b"%PDF" (validate first 4 bytes)
             if not file_bytes.startswith(b"%PDF"):

@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import Optional, List
-import httpx
+from typing import Optional
 
 from app.db.database import get_db
 from app.db.models.topic import Topic, PaperTopic
@@ -70,7 +69,7 @@ def get_stored_trends(
                 {
                     "id": p.id,
                     "title": p.title,
-                    "abstract": p.abstract,
+                    "abstract": p.abstract_en,
                     "published": p.published
                 } for p in papers
             ]

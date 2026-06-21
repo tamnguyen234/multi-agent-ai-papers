@@ -47,7 +47,7 @@ def build_digest_html(digest_date: str, papers: list) -> str:
                 </div>
                 <div class="meta"><strong>Authors:</strong> {authors_str}</div>
                 <div class="summary">
-                    <strong>Summary:</strong> {paper.summary_vi}
+                    <strong>Abstract (VI):</strong> {paper.abstract_vi}
                 </div>
             </div>
         """
@@ -68,7 +68,7 @@ def build_digest_text(digest_date: str, papers: list) -> str:
         text_content += f"#{rank} {paper.title}\n"
         text_content += f"ID: {paper.external_id} | Score: {paper.score} | Published: {paper.published}\n"
         text_content += f"Authors: {authors_str}\n"
-        text_content += f"Summary: {paper.summary_vi}\n\n"
+        text_content += f"Abstract (VI): {paper.abstract_vi}\n\n"
         text_content += "-" * 40 + "\n\n"
     return text_content
 
@@ -85,7 +85,6 @@ class NotificationService:
         """
         Sends daily digest emails to all users who opted-in for notifications.
         Catches individual errors so a failure for one user doesn't block the rest.
-        Creates/updates notification records as required by the unique constraint.
         """
         logger.info("Starting send_daily_digest_notifications")
         
@@ -117,13 +116,11 @@ class NotificationService:
                 text_content=text_content
             )
             
-            status_val = "sent" if success else "failed"
-            sent_at_val = datetime.now() if success else None
-            error_msg_val = None if success else "SMTP delivery failure"
-            
             if success:
+                logger.info(f"Successfully sent digest email to {user.email}")
                 sent_count += 1
             else:
+                logger.error(f"Failed to send digest email to {user.email}")
                 failed_count += 1
                 
         return {

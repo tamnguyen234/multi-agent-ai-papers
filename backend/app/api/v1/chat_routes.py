@@ -6,7 +6,6 @@ from app.db.models.user import User
 from app.db.models.paper import Paper
 from app.db.models.chat import ChatSession, ChatMessage
 from app.core.security import get_current_user
-from app.core.config import settings
 from app.services.qa_client import ask_question
 from app.schemas.chat_schema import (
     ChatSessionCreate,
@@ -144,8 +143,8 @@ def post_chat_message(
             "paper_id": paper.id,
             "pdf_path": paper.pdf_path,
             "title": paper.title,
-            "abstract": paper.abstract,
-            "summary": paper.summary_vi,
+            "abstract": paper.abstract_en,
+            "summary": paper.abstract_vi,
             "question": message_in.question,
             "external_id": paper.external_id,
             "history": qa_history

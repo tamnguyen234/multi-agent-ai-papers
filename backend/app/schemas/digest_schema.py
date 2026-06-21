@@ -6,8 +6,9 @@ class DigestPaperPaperResponse(BaseModel):
     id: int
     external_id: str
     title: str
-    summary_en: Optional[str] = None
-    summary_vi: Optional[str] = None
+    abstract_en: str
+    abstract_vi: Optional[str] = None
+    authors: Optional[List[str]] = None
     score: float
     published: Optional[date] = None
     has_audio: bool

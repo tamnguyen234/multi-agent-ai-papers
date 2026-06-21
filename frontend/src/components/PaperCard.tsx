@@ -15,7 +15,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
   const scoreLabel = formatScore(paper.score);
   const authorsLabel = formatAuthorsShort(paper.authors, 3);
   const dateLabel = formatDate(paper.published);
-  const summaryText = truncateText(paper.summary_vi || paper.summary_en || paper.abstract, 200);
+  const summaryText = truncateText(paper.abstract_vi || paper.abstract_en, 200);
 
   return (
     <article className="paper-card">

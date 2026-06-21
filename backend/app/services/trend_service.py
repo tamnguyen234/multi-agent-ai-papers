@@ -35,8 +35,8 @@ def build_paper_payload(papers: list[Paper]) -> list[dict]:
         payload.append({
             "id": paper.id,
             "title": paper.title,
-            "abstract": paper.abstract or "",
-            "summary": paper.summary_en or ""
+            "abstract": paper.abstract_en or "",
+            "published": paper.published.isoformat() if paper.published else ""
         })
     return payload
 
@@ -59,72 +59,49 @@ def analyze_and_store_trends(db: Session, limit: int | None = None) -> dict:
             "topics": []
         }
         
-    # 2. Call local Trend Agent model directly
-    from app.services.trend_model.services import pipeline_service
+    # 2. Call Trend Agent via HTTP
+    import httpx
+    import math
     
-    # --- MOCK LLM FIX ---
-    # Patch requests.post to fix model hallucination and switch to llama3.2:1b
-    original_post = pipeline_service.requests.post
-    def patched_post(url, json=None, **kwargs):
-        if url == "http://localhost:11434/api/generate" and json:
-            json["model"] = "llama3.2:1b"
-            # Prevent infinite token generation loops
-            json["options"] = {"num_predict": 10, "stop": ["\n", ".", ","]}
-        return original_post(url, json=json, **kwargs)
-    pipeline_service.requests.post = patched_post
-    # --------------------
-
-    process_topic_clustering = pipeline_service.process_topic_clustering
-    generate_embeddings = pipeline_service.generate_embeddings
-    # -----------------------------------------------------
+    payload = build_paper_payload(papers)
+    trend_agent_url = getattr(settings, "TREND_AGENT_URL", "http://localhost:8005")
     
-    
-    class PaperMock:
-        def __init__(self, id, title, abstract, published):
-            self.id = id
-            self.title = title
-            self.abstract = abstract
-            self.published = published
-            self.paper_vector = None
-            self.umap_x = None
-            self.umap_y = None
-
-    mock_papers = [
-        PaperMock(id=p.id, title=p.title, abstract=p.abstract, published=p.published)
-        for p in papers
-    ]
-    
-    # Generate embeddings
-    texts_to_process = [f"{p.title}. {p.abstract}" for p in mock_papers]
-    vectors = generate_embeddings(texts_to_process)
-    for i, p in enumerate(mock_papers):
-        p.paper_vector = vectors[i].tolist()
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(f"{trend_agent_url}/analyze", json={"papers": payload})
+            response.raise_for_status()
+            agent_data = response.json()
+    except Exception as e:
+        logger.error(f"Failed to call Trend Agent: {str(e)}")
+        raise HTTPException(status_code=500, detail="Trend Agent unavailable")
         
-    # Process clustering
-    graph = process_topic_clustering(None, mock_papers)
+    graph = agent_data.get("graph", {})
+    papers_res = agent_data.get("papers", [])
     
     # Reconstruct topics from graph nodes
     topics_map = {}
-    for node in graph["nodes"]:
+    for node in graph.get("nodes", []):
         topics_map[node["id"]] = {
             "name": node["name"],
             "description": "Keywords: " + ", ".join(node["keywords"]),
             "paper_ids": [],
-            "confidence_score": 0.85 # Default confidence since pipeline_service doesn't return one
+            "confidence_score": 0.85 # Default confidence
         }
     
-    for mp in mock_papers:
-        if mp.umap_x is not None and mp.umap_y is not None:
+    for mp in papers_res:
+        umap_x = mp.get("umap_x")
+        umap_y = mp.get("umap_y")
+        if umap_x is not None and umap_y is not None:
             closest_node_id = None
             min_dist = float('inf')
             for node in graph.get("nodes", []):
-                dist = math.sqrt((mp.umap_x - node["x"])**2 + (mp.umap_y - node["y"])**2)
+                dist = math.sqrt((umap_x - node["x"])**2 + (umap_y - node["y"])**2)
                 if dist < min_dist:
                     min_dist = dist
                     closest_node_id = node["id"]
             
             if closest_node_id is not None:
-                topics_map[closest_node_id]["paper_ids"].append(mp.id)
+                topics_map[closest_node_id]["paper_ids"].append(mp["id"])
                 
     final_topics = [t for t in topics_map.values() if len(t["paper_ids"]) > 0]
     
@@ -202,7 +179,7 @@ def analyze_and_store_trends(db: Session, limit: int | None = None) -> dict:
                     {
                         "id": paper_map[pid].id,
                         "title": paper_map[pid].title,
-                        "abstract": paper_map[pid].abstract,
+                        "abstract": paper_map[pid].abstract_en,
                         "published": paper_map[pid].published
                     } for pid in valid_paper_ids
                 ]

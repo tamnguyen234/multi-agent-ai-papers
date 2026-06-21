@@ -48,11 +48,11 @@ if not exist agents\qa_agent\.env (
     echo agents/qa_agent/.env already exists. Skipping.
 )
 
-if not exist agents\tts_agent\.env (
-    echo Creating agents/tts_agent/.env from example...
-    copy agents\tts_agent\.env.example agents\tts_agent\.env > nul
+if not exist agents\daily_paper_audio_pipeline\tts_agent\.env (
+    echo Creating agents/daily_paper_audio_pipeline/tts_agent/.env from example...
+    copy agents\daily_paper_audio_pipeline\tts_agent\.env.example agents\daily_paper_audio_pipeline\tts_agent\.env > nul
 ) else (
-    echo agents/tts_agent/.env already exists. Skipping.
+    echo agents/daily_paper_audio_pipeline/tts_agent/.env already exists. Skipping.
 )
 
 if not exist frontend\.env (
@@ -93,7 +93,7 @@ echo.
 echo [3/3] Setting up virtual environments for AI Agents (%MODE_NAME%)...
 
 :: Loop helper to setup each agent
-for %%A in (qa_agent tts_agent) do (
+for %%A in (qa_agent trend_agent daily_paper_audio_pipeline\tts_agent) do (
     echo.
     echo ---------------------------------------------------
     echo Configuring agents/%%A...

@@ -60,7 +60,7 @@ export const TopicPaperList: React.FC<TopicPaperListProps> = ({ topic }) => {
                 </div>
 
                 <p className="trend-paper-abstract">
-                  {paper.abstract}
+                  {paper.abstract_en}
                 </p>
 
                 <div className="trend-paper-actions">

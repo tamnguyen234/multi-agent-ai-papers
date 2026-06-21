@@ -13,9 +13,8 @@ export interface Paper {
   id: number;
   external_id: string;
   title: string;
-  abstract: string;
-  summary_en: string | null;
-  summary_vi: string | null;
+  abstract_en: string;
+  abstract_vi: string | null;
   /** Backend returns List[str] but may also be null */
   authors: string[] | null;
   published: string | null; // ISO date "YYYY-MM-DD"

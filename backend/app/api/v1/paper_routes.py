@@ -26,7 +26,7 @@ def get_papers(
         query = query.filter(
             or_(
                 func.lower(Paper.title).like(search_term),
-                func.lower(Paper.abstract).like(search_term)
+                func.lower(Paper.abstract_en).like(search_term)
             )
         )
         

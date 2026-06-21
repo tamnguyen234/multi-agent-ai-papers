@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '../../types/chat';
 import { formatDateTime } from '../../utils/formatters';

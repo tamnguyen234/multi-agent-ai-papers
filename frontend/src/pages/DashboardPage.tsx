@@ -42,10 +42,10 @@ export const DashboardPage: React.FC = () => {
   const handleRunDigestJob = async () => {
     if (isRunningJob) return;
     setIsRunningJob(true);
-    showToast('Bắt đầu tải bài báo mới từ arXiv...', 'info');
+    showToast('Bắt đầu tải bài báo mới từ Hugging Face...', 'info');
     try {
       const res = await runDailyDigestJob();
-      showToast(res.message || `Hoàn thành! Tạo ${res.papers_count ?? '?'} bài báo mới.`, 'success');
+      showToast(res.message || `Hoàn thành! Tạo ${res.total_papers ?? '?'} bài báo mới.`, 'success');
       // Refresh digest after job
       await fetchDigest();
     } catch (err: unknown) {
@@ -69,7 +69,7 @@ export const DashboardPage: React.FC = () => {
       <section className="welcome-banner">
         <div className="welcome-content">
           <h1>Xin chào, {currentUser?.full_name || currentUser?.username}! 👋</h1>
-          <p>{today} — Dưới đây là Top 5 bài báo AI hot nhất hôm nay từ arXiv.</p>
+          <p>{today} — Dưới đây là Top 5 bài báo AI hot nhất hôm nay từ Hugging Face.</p>
         </div>
         <div className="welcome-actions">
           <button
@@ -77,7 +77,7 @@ export const DashboardPage: React.FC = () => {
             className={`btn-run-job${isRunningJob ? ' btn-run-job--loading' : ''}`}
             onClick={handleRunDigestJob}
             disabled={isRunningJob || digestLoading}
-            title="Kích hoạt pipeline lấy bài báo mới từ arXiv (dùng cho demo)"
+            title="Kích hoạt pipeline lấy bài báo mới từ Hugging Face (dùng cho demo)"
           >
             {isRunningJob ? (
               <>
@@ -125,7 +125,7 @@ export const DashboardPage: React.FC = () => {
         {!digestLoading && !digestError && (!digest || digest.papers.length === 0) && (
           <EmptyState
             title="Chưa có bản tin hôm nay"
-            message="Hệ thống chưa tải bài báo nào hôm nay. Nhấp nút dưới để chạy Digest Job và cập nhật bản tin arXiv mới nhất."
+            message="Hệ thống chưa tải bài báo nào hôm nay. Nhấp nút dưới để chạy Digest Job và cập nhật bản tin Hugging Face mới nhất."
             icon="📭"
             actionLabel="Chạy Digest Job"
             onAction={handleRunDigestJob}

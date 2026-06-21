@@ -174,23 +174,24 @@ export const PaperDetailPage: React.FC = () => {
         </section>
       )}
 
-      {/* Summary */}
-      {paper.summary_vi && (
+
+      {/* Abstract (EN) */}
+      <section className="detail-section">
+        <h2 className="detail-section__title">📋 Abstract (EN)</h2>
+        <div className="detail-section__content">
+          {paper.abstract_en}
+        </div>
+      </section>
+
+      {/* Translated Abstract */}
+      {paper.abstract_vi && (
         <section className="detail-section">
-          <h2 className="detail-section__title">📝 Tóm tắt tiếng Việt</h2>
-          <div className="detail-text-block detail-text-block--summary">
-            {paper.summary_vi}
+          <h2 className="detail-section__title">📝 Tóm tắt (VI)</h2>
+          <div className="detail-section__content">
+            {paper.abstract_vi}
           </div>
         </section>
       )}
-
-      {/* Abstract */}
-      <section className="detail-section">
-        <h2 className="detail-section__title">📋 Abstract</h2>
-        <div className="detail-text-block">
-          {paper.abstract}
-        </div>
-      </section>
 
       {/* Audio abstract */}
       <section className="detail-section">

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Load environment configurations
 load_dotenv()
 
-from app.schemas import TTSRequest, TTSResponse
+from app.schemas import TTSRequest, TTSResponse, TranslateRequest, TranslateResponse
 from app.tts_engine import synthesize_text
 from app.real_tts import RealTTSEngine
 
@@ -83,3 +83,23 @@ def text_to_speech_synthesize(payload: TTSRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"TTS synthesis failed: {str(e)}"
         )
+
+@app.post("/tts/translate", response_model=TranslateResponse)
+def translate_text(payload: TranslateRequest):
+    """
+    Translate English text to Vietnamese.
+    """
+    if not payload.text or not payload.text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Text must not be empty"
+        )
+    
+    try:
+        engine = RealTTSEngine.get_instance()
+        translated = engine.translate_en_to_vi(payload.text)
+        return TranslateResponse(translated_text=translated)
+    except Exception as e:
+        logger.error(f"Translation endpoint error: {str(e)}", exc_info=True)
+        # Fallback to simple prompt if model fails (or just return original text)
+        return TranslateResponse(translated_text=f"Bản dịch (Lỗi mô hình): {payload.text}")

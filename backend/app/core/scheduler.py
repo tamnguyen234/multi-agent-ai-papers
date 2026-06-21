@@ -1,6 +1,6 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from app.jobs.daily_digest_job import run_daily_digest_job
+from app.jobs.daily_paper_job import run_daily_paper_pipeline_job
 from app.core.config import settings
 import logging
 import pytz
@@ -40,9 +40,9 @@ def start_scheduler():
         
         # Add the job
         scheduler.add_job(
-            run_daily_digest_job,
+            run_daily_paper_pipeline_job,
             trigger=trigger,
-            id="daily_digest_job",
+            id="daily_paper_pipeline_job",
             replace_existing=True
         )
         

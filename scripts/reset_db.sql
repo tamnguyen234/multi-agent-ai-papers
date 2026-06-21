@@ -25,11 +25,10 @@ CREATE TABLE users (
 CREATE TABLE papers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     external_id VARCHAR(50) NOT NULL UNIQUE,
-    title VARCHAR(500) NOT NULL,
-    abstract TEXT NOT NULL,
-    summary_en TEXT,
-    summary_vi TEXT,
-    authors JSON,
+    title TEXT NOT NULL,
+    abstract_en TEXT NOT NULL,
+    abstract_vi TEXT,
+    authors TEXT,
     published DATE,
     source_url TEXT,
     pdf_path VARCHAR(500),
@@ -138,7 +137,9 @@ CREATE TABLE topics (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    keywords_json JSON,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. Table: paper_topics

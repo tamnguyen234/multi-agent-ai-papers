@@ -1,14 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from app.core.config import settings
 from app.db.database import get_db
-from app.db.models.paper import Paper
-from app.db.models.digest import Digest, DigestPaper
-from app.db.models.audio import AudioAbstract
 from app.services import storage_service
-from app.schemas.digest_schema import DigestResponse
 
 router = APIRouter()
 
@@ -79,8 +75,8 @@ def run_daily_digest_job_endpoint():
             detail="Manual job triggering is only permitted in development environment."
         )
         
-    from app.jobs.daily_digest_job import run_daily_digest_job
-    result = run_daily_digest_job()
+    from app.jobs.daily_paper_job import run_daily_paper_pipeline_job
+    result = run_daily_paper_pipeline_job()
     
     if "error" in result:
         raise HTTPException(
@@ -129,43 +125,7 @@ def send_test_email(payload: SendTestEmailRequest):
         
     return {"message": f"Test email sent successfully to {payload.to_email}", "status": "ok"}
 
-@router.post("/generate-audio-abstract/{paper_id}", status_code=status.HTTP_200_OK)
-def dev_generate_audio_abstract(paper_id: int, db: Session = Depends(get_db)):
-    """Generate audio abstract for a specific paper. restricted to dev environment."""
-    if settings.APP_ENV.lower() != "development":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Generating audio abstract manually is only permitted in development environment."
-        )
-        
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
-    if not paper:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Paper with ID {paper_id} not found."
-        )
-        
-    from app.services.audio_abstract_service import generate_audio_for_paper_summary
-    return generate_audio_for_paper_summary(db, paper, force=False)
 
-@router.post("/regenerate-audio-abstract/{paper_id}", status_code=status.HTTP_200_OK)
-def dev_regenerate_audio_abstract(paper_id: int, db: Session = Depends(get_db)):
-    """Regenerate audio abstract for a specific paper with force=True. restricted to dev environment."""
-    if settings.APP_ENV.lower() != "development":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Regenerating audio abstract manually is only permitted in development environment."
-        )
-        
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
-    if not paper:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Paper with ID {paper_id} not found."
-        )
-        
-    from app.services.audio_abstract_service import generate_audio_for_paper_summary
-    return generate_audio_for_paper_summary(db, paper, force=True)
 
 @router.post("/download-paper-pdf/{paper_id}", status_code=status.HTTP_200_OK)
 def dev_download_paper_pdf(paper_id: int, db: Session = Depends(get_db)):
