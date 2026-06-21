@@ -24,19 +24,22 @@ CREATE TABLE users (
 -- 2. Table: papers
 CREATE TABLE papers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    arxiv_id VARCHAR(50) NOT NULL UNIQUE,
+    external_id VARCHAR(50) NOT NULL UNIQUE,
     title VARCHAR(500) NOT NULL,
     abstract TEXT NOT NULL,
-    summary TEXT,
+    summary_en TEXT,
+    summary_vi TEXT,
     authors JSON,
     published DATE,
+    source_url TEXT,
     pdf_path VARCHAR(500),
+    source VARCHAR(100) NOT NULL,
     score FLOAT NOT NULL DEFAULT 0,
     has_audio BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_papers_arxiv_id ON papers(arxiv_id);
+CREATE INDEX idx_papers_external_id ON papers(external_id);
 CREATE INDEX idx_papers_published ON papers(published);
 CREATE INDEX idx_papers_score ON papers(score);
 CREATE INDEX idx_papers_created_at ON papers(created_at);
@@ -119,8 +122,6 @@ CREATE TABLE chat_messages (
     chat_session_id BIGINT NOT NULL,
     role ENUM('user', 'assistant', 'system') NOT NULL,
     content TEXT NOT NULL,
-    tts_path VARCHAR(500),
-    tts_timestamps JSON,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_chat_messages_session
         FOREIGN KEY (chat_session_id)

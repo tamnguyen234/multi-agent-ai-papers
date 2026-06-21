@@ -49,27 +49,25 @@ Hệ thống **AI Paper Multi-Agent System** được thiết kế theo mô hìn
 ┌──────────────────┐          ┌────────────────────────────────────────────┐
 │  MySQL Database  │          │           AI Agent Services                 │
 │  (ai_papers)     │          │                                             │
-│  Port: 3306      │          │  ┌──────────────────────────────────────┐  │
-│                  │          │  │ Summarizer Agent    Port 8101         │  │
-│  10 Tables:      │          │  │ feedparser + transformers (BART/T5)  │  │
-│  - users         │          │  │ arXiv RSS scraping + summarization   │  │
+│                  │          │  │ Q&A Agent           Port 8103         │  │
+│  10 Tables:      │          │  │ LangChain RAG + FAISS + pymupdf4llm │  │
+│  - users         │          │  │ Ollama (qwen3.5 + nomic embeddings) │  │
 │  - papers        │          │  └──────────────────────────────────────┘  │
 │  - digests       │          │  ┌──────────────────────────────────────┐  │
-│  - digest_papers │          │  │ Trend Agent         Port 8102         │  │
-│  - audio_abst..  │          │  │ BERTopic + UMAP + HDBSCAN            │  │
-│  - chat_sessions │          │  │ sentence-transformers embeddings     │  │
+│  - digest_papers │          │  │ TTS Agent           Port 8104         │  │
+│  - audio_abst..  │          │  │ transformers (Bark/VITS/SpeechT5)   │  │
+│  - chat_sessions │          │  │ Text → .wav audio file               │  │
 │  - chat_messages │          │  └──────────────────────────────────────┘  │
-│  - topics        │          │  ┌──────────────────────────────────────┐  │
-│  - paper_topics  │          │  │ Q&A Agent           Port 8103         │  │
-│  - notifications │          │  │ LangChain RAG + FAISS + pymupdf4llm │  │
-└──────────────────┘          │  │ Ollama (qwen3.5 + nomic embeddings) │  │
-                              │  └──────────────────────────────────────┘  │
-┌──────────────────┐          │  ┌──────────────────────────────────────┐  │
-│  Local Storage   │          │  │ TTS Agent           Port 8104         │  │
-│  ./data/         │          │  │ transformers (Bark/VITS/SpeechT5)   │  │
-│  ├── paper_pdf/  │          │  │ Text → .wav audio file               │  │
-│  ├── audio_abs./ │          │  └──────────────────────────────────────┘  │
-│  ├── audio_chat/ │          └────────────────────────────────────────────┘
+│  - topics        │          └────────────────────────────────────────────┘
+│  - paper_topics  │
+│  - notifications │
+└──────────────────┘
+┌──────────────────┐          
+│  Local Storage   │          
+│  ./data/         │          
+│  ├── paper_pdf/  │          
+│  ├── audio_abs./ │          
+│  ├── audio_chat/ │
 │  ├── faiss_idx/  │
 │  └── logs/       │
 └──────────────────┘
@@ -125,12 +123,10 @@ Hệ thống **AI Paper Multi-Agent System** được thiết kế theo mô hìn
 
 | Agent | Port | Mode chính | Fallback |
 |---|---|---|---|
-| Summarizer Agent | 8101 | `real` (arXiv RSS + BART/T5) | `mock_fallback` |
-| Trend Agent | 8102 | `real` (BERTopic) | `rule_based_fallback` |
 | Q&A Agent | 8103 | `real` (LangChain + Ollama) | `mock_fallback` |
 | TTS Agent | 8104 | `real` (SpeechT5/Bark) | `mock_fallback` |
 
-*Ghi chú: Cập nhật tài liệu này chỉ tham chiếu các file markdown hợp lệ, các liên kết cũ [docs/api_endpoints.md](api_endpoints.md) được quy sang [docs/05-api-design.md](05-api-design.md).*
+*Ghi chú: Cập nhật tài liệu này chỉ tham chiếu các file markdown hợp lệ. Trend logic và Summarization logic đã được đưa thẳng vào thư mục `backend/app/services` như là các library modules nội bộ, không còn chạy độc lập ở port 8101 hay 8102 nữa.*
 
 Mỗi Agent có endpoint `/health` và `/` (root info).  
 Backend đọc mode từ biến môi trường (`SUMMARIZER_MODE`, `TREND_MODE`, v.v.).
@@ -213,8 +209,6 @@ Backend   ←──(File I/O)─────────────→  ./data/
 | Thành phần | Lệnh khởi chạy |
 |---|---|
 | Backend | `cd backend && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000` |
-| Summarizer Agent | `cd agents/summarizer_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8101` |
-| Trend Agent | `cd agents/trend_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8102` |
 | Q&A Agent | `cd agents/qa_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8103` |
 | TTS Agent | `cd agents/tts_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8104` |
 | Frontend | `cd frontend && npm run dev` |

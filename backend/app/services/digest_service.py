@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.db.models.paper import Paper
 from app.db.models.digest import Digest, DigestPaper
-from app.services import summarizer_client
 from app.core.config import settings
 import logging
 
@@ -29,8 +28,8 @@ class DigestService:
         """
         logger.info("Executing DigestService.run_daily_digest_flow")
         
-        # 1. Fetch top 5 papers from summarizer agent client
-        agent_data = summarizer_client.call_daily_top5()
+        # 1. Fetch top 5 papers from summarizer agent client (REMOVED)
+        agent_data = {"date": datetime.now().strftime("%Y-%m-%d"), "papers": []}
         
         # Parse date from agent response
         try:
@@ -40,7 +39,7 @@ class DigestService:
             
         # 2. Save or update papers in the database
         papers_to_associate = []
-        new_arxiv_ids = {p_data["arxiv_id"] for p_data in agent_data["papers"]}
+        new_external_ids = {p_data.get("external_id", p_data.get("arxiv_id")) for p_data in agent_data["papers"]}
         
         for p_data in agent_data["papers"]:
             # Format published date string to Python date object
@@ -52,24 +51,30 @@ class DigestService:
             except Exception:
                 pub_date = None
                 
-            p = db.query(Paper).filter(Paper.arxiv_id == p_data["arxiv_id"]).first()
+            ext_id = p_data.get("external_id", p_data.get("arxiv_id"))
+            p = db.query(Paper).filter(Paper.external_id == ext_id).first()
             if not p:
                 p = Paper(
-                    arxiv_id=p_data["arxiv_id"],
+                    external_id=ext_id,
                     title=p_data["title"],
                     abstract=p_data["abstract"],
-                    summary=p_data["summary"],
+                    summary_en=p_data.get("summary_en"),
+                    summary_vi=p_data.get("summary_vi", p_data.get("summary")),
                     authors=p_data["authors"],
                     published=pub_date,
                     score=p_data["score"],
-                    has_audio=False
+                    has_audio=False,
+                    source="huggingface" # Default source when fetched
                 )
                 db.add(p)
                 db.flush()
             else:
                 p.title = p_data["title"]
                 p.abstract = p_data["abstract"]
-                p.summary = p_data["summary"]
+                if "summary_en" in p_data:
+                    p.summary_en = p_data["summary_en"]
+                if "summary_vi" in p_data or "summary" in p_data:
+                    p.summary_vi = p_data.get("summary_vi", p_data.get("summary"))
                 p.authors = p_data["authors"]
                 p.published = pub_date
                 p.score = p_data["score"]
@@ -88,11 +93,10 @@ class DigestService:
         occupied_ranks = {}
         
         for dp in existing_dps:
-            arxiv_id = dp.paper.arxiv_id
-            is_mock_or_sample = arxiv_id.startswith("mock-") or arxiv_id.startswith("sample-")
-            is_new_result = arxiv_id in new_arxiv_ids
+            ext_id = dp.paper.external_id
+            is_new_result = ext_id in new_external_ids
             
-            if is_mock_or_sample or is_new_result:
+            if is_new_result:
                 db.delete(dp)
             else:
                 occupied_ranks[dp.rank_position] = dp.paper_id
@@ -122,7 +126,7 @@ class DigestService:
                 generate_audio_for_paper_summary(db, dp.paper, force=False)
             except Exception as e:
                 logger.error(
-                    f"Failed to generate audio summary for paper {dp.paper.arxiv_id} (ID: {dp.paper.id}): {str(e)}"
+                    f"Failed to generate audio summary for paper {dp.paper.external_id} (ID: {dp.paper.id}): {str(e)}"
                 )
                 
         # 7. Download PDF for the top 5 papers if enabled
@@ -133,7 +137,7 @@ class DigestService:
                     download_and_attach_pdf(db, dp.paper.id)
                 except Exception as e:
                     logger.error(
-                        f"Failed to download PDF for paper {dp.paper.arxiv_id} (ID: {dp.paper.id}): {str(e)}"
+                        f"Failed to download PDF for paper {dp.paper.external_id} (ID: {dp.paper.id}): {str(e)}"
                     )
 
         return digest

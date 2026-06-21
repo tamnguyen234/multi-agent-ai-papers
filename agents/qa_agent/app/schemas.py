@@ -8,7 +8,7 @@ class QAAskRequest(BaseModel):
     abstract: Optional[str] = None
     summary: Optional[str] = None
     question: str
-    arxiv_id: Optional[str] = None
+    external_id: Optional[str] = None
     history: List[dict] = Field(default_factory=list)
 
 class QASource(BaseModel):

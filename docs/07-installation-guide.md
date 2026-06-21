@@ -110,15 +110,7 @@ scripts\run_all.bat
 cd backend
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-# Terminal 2 – Summarizer Agent (Port 8101)
-cd agents\summarizer_agent
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8101
-
-# Terminal 3 – Trend Agent (Port 8102)
-cd agents\trend_agent
-.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8102
-
-# Terminal 4 – Q&A Agent (Port 8103)
+# Terminal 2 – Q&A Agent (Port 8103)
 cd agents\qa_agent
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8103
 
@@ -138,8 +130,6 @@ npm run dev
 | Frontend | http://localhost:5173 |
 | Backend API | http://127.0.0.1:8000 |
 | Swagger UI | http://127.0.0.1:8000/docs |
-| Summarizer Agent | http://127.0.0.1:8101 |
-| Trend Agent | http://127.0.0.1:8102 |
 | QA Agent | http://127.0.0.1:8103 |
 | TTS Agent | http://127.0.0.1:8104 |
 
@@ -151,8 +141,6 @@ Kiểm tra thủ công qua các endpoint health check của hệ thống:
 ```cmd
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/api/v1/system/db-health
-curl http://127.0.0.1:8101/health
-curl http://127.0.0.1:8102/health
 curl http://127.0.0.1:8103/health
 curl http://127.0.0.1:8104/health
 ```
@@ -165,8 +153,6 @@ curl http://127.0.0.1:8104/health
 
 Trong `backend/.env`:
 ```env
-SUMMARIZER_MODE=mock_fallback
-TREND_MODE=rule_based_fallback
 QA_MODE=mock_fallback
 TTS_MODE=mock_fallback
 ```
@@ -176,8 +162,6 @@ TTS_MODE=mock_fallback
 ### Real Mode (Cần phần cứng mạnh)
 
 ```env
-SUMMARIZER_MODE=real       # Cần: transformers, torch, ~4GB model
-TREND_MODE=bertopic        # Cần: bertopic, umap-learn, hdbscan
 QA_MODE=real               # Cần: Ollama server + qwen3.5:4b + nomic-embed-text
 TTS_MODE=real              # Cần: torch, transformers TTS model
 ```
@@ -285,9 +269,6 @@ Access-Control-Allow-Origin error
 httpx.TimeoutException
 ```
 **Giải pháp**: Agent chưa khởi động, hoặc đang load model. Chờ 30-60 giây.
-
-### Summarizer timeout (120s)
-**Giải pháp**: Lần đầu download BART/T5 model (~1.6GB). Chờ download xong, lần sau nhanh hơn.
 
 ### Lỗi: Port bị chiếm (WinError 10013 / Address already in use)
 

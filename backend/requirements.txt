@@ -16,3 +16,8 @@ httpx>=0.27.0
 python-multipart>=0.0.9
 pytz>=2024.1
 
+# Trend Agent Model Dependencies
+sentence-transformers>=3.0.1
+umap-learn>=0.5.6
+hdbscan>=0.8.36
+bertopic>=0.16.2

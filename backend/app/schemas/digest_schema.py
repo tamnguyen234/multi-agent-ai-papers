@@ -4,9 +4,10 @@ from typing import List, Optional
 
 class DigestPaperPaperResponse(BaseModel):
     id: int
-    arxiv_id: str
+    external_id: str
     title: str
-    summary: Optional[str] = None
+    summary_en: Optional[str] = None
+    summary_vi: Optional[str] = None
     score: float
     published: Optional[date] = None
     has_audio: bool

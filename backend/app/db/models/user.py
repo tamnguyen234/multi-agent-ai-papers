@@ -13,9 +13,7 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False, index=True)
     noti_daily = Column(Boolean, default=True, server_default=text('true'), nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)
 
     # Relationships
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
-    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 

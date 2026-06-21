@@ -42,18 +42,11 @@ class Settings(BaseSettings):
     DATA_DIR: str = "./data"
     PAPER_PDF_DIR: str = "./data/paper_pdf"
     AUDIO_ABSTRACT_DIR: str = "./data/audio_abstract"
-    AUDIO_CHAT_MESSAGE_DIR: str = "./data/audio_chat_message"
     FAISS_INDEX_DIR: str = "./data/indices_v2"
     
     # Agent service base URLs
-    SUMMARIZER_AGENT_URL: str = "http://127.0.0.1:8101"
-    SUMMARIZER_MODE: str = "mock"
-    TREND_AGENT_URL: str = "http://localhost:8102"
-    TREND_MODE: str = "rule_based"
     QA_AGENT_URL: str = "http://127.0.0.1:8103"
-    QA_MODE: str = "mock"
     TTS_AGENT_URL: str = "http://127.0.0.1:8104"
-    TTS_MODE: str = "mock"
     
     # Daily scheduler configurations
     DAILY_DIGEST_CRON_HOUR: int = 2

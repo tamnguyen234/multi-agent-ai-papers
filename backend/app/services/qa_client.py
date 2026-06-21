@@ -45,6 +45,6 @@ def ask_question(payload: dict) -> dict:
     # Ensure mode and sources exist in response
     return {
         "answer": data["answer"],
-        "mode": data.get("mode", "mock"),
+        "mode": data.get("mode", "real"),
         "sources": data.get("sources", [])
     }

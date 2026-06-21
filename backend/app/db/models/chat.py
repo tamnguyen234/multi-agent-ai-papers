@@ -10,7 +10,6 @@ class ChatSession(Base):
     user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     paper_id = Column(BigInteger, ForeignKey("papers.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="chat_sessions")
@@ -21,13 +20,9 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    chat_session_id = Column("session_id", BigInteger, ForeignKey("chat_sessions.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
+    chat_session_id = Column(BigInteger, ForeignKey("chat_sessions.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     role = Column(Enum('user', 'assistant', 'system', name='chat_message_role_enum'), nullable=False)
     content = Column(Text, nullable=False)
-    sources_json = Column(JSON, nullable=True)
-    tts_path = Column(String(500), nullable=True)
-    tts_timestamps_json = Column("tts_timestamps_json", JSON, nullable=True)
-    tts_duration_seconds = Column(Float, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False, index=True)
 
     # Relationships
@@ -40,17 +35,3 @@ class ChatMessage(Base):
     @session_id.setter
     def session_id(self, value: int):
         self.chat_session_id = value
-
-    @property
-    def tts_timestamps(self):
-        return self.tts_timestamps_json
-
-    @tts_timestamps.setter
-    def tts_timestamps(self, value):
-        self.tts_timestamps_json = value
-
-    @property
-    def tts_url(self) -> str:
-        if self.tts_path:
-            return "/static/" + self.tts_path.replace("\\", "/").lstrip("/")
-        return None

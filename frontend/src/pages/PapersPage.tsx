@@ -52,7 +52,7 @@ export const PapersPage: React.FC = () => {
         const authorsStr = Array.isArray(p.authors) ? p.authors.join(' ') : (p.authors ?? '');
         return (
           p.title.toLowerCase().includes(q) ||
-          p.arxiv_id.toLowerCase().includes(q) ||
+          p.external_id.toLowerCase().includes(q) ||
           authorsStr.toLowerCase().includes(q)
         );
       });
@@ -137,7 +137,7 @@ export const PapersPage: React.FC = () => {
             id="papers-search"
             type="text"
             className="toolbar-search__input"
-            placeholder="Tìm theo tiêu đề, arxiv ID, tác giả…"
+            placeholder="Tìm theo tiêu đề, ID bài báo, tác giả…"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />

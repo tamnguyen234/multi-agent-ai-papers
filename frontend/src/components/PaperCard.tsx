@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Paper } from '../types/paper';
 import { formatAuthorsShort, formatDate, formatScore, truncateText } from '../utils/formatters';
-import { buildMediaUrl, arxivAbsUrl } from '../utils/mediaUrl';
+import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 
 interface PaperCardProps {
   paper: Paper;
@@ -11,11 +11,11 @@ interface PaperCardProps {
 const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
   const pdfUrl = buildMediaUrl(paper.pdf_url || paper.pdf_path);
   const audioUrl = buildMediaUrl(paper.audio_abstract_url || paper.audio_abstract_path);
-  const arxivUrl = arxivAbsUrl(paper.arxiv_id);
+  const sourceUrl = paper.source_url || externalAbsUrl(paper.external_id);
   const scoreLabel = formatScore(paper.score);
   const authorsLabel = formatAuthorsShort(paper.authors, 3);
   const dateLabel = formatDate(paper.published);
-  const summaryText = truncateText(paper.summary || paper.abstract, 200);
+  const summaryText = truncateText(paper.summary_vi || paper.summary_en || paper.abstract, 200);
 
   return (
     <article className="paper-card">
@@ -41,7 +41,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
           </span>
         )}
         <span className="meta-tag">📅 {dateLabel}</span>
-        <span className="meta-tag meta-tag--arxiv">📑 {paper.arxiv_id}</span>
+        <span className="meta-tag meta-tag--external">📑 {paper.external_id}</span>
       </div>
 
       {/* Summary / abstract snippet */}
@@ -59,13 +59,13 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
           Xem chi tiết →
         </Link>
         <a
-          href={arxivUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-paper-action btn-paper-action--arxiv"
-          id={`paper-arxiv-${paper.id}`}
+          id={`paper-source-${paper.id}`}
         >
-          🔗 arXiv
+          🔗 Nguồn
         </a>
         {pdfUrl && (
           <a

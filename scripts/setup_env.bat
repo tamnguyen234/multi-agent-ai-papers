@@ -39,19 +39,7 @@ if not exist backend\.env (
     echo backend/.env already exists. Skipping.
 )
 
-if not exist agents\summarizer_agent\.env (
-    echo Creating agents/summarizer_agent/.env from example...
-    copy agents\summarizer_agent\.env.example agents\summarizer_agent\.env > nul
-) else (
-    echo agents/summarizer_agent/.env already exists. Skipping.
-)
 
-if not exist agents\trend_agent\.env (
-    echo Creating agents/trend_agent/.env from example...
-    copy agents\trend_agent\.env.example agents\trend_agent\.env > nul
-) else (
-    echo agents/trend_agent/.env already exists. Skipping.
-)
 
 if not exist agents\qa_agent\.env (
     echo Creating agents/qa_agent/.env from example...
@@ -105,7 +93,7 @@ echo.
 echo [3/3] Setting up virtual environments for AI Agents (%MODE_NAME%)...
 
 :: Loop helper to setup each agent
-for %%A in (summarizer_agent trend_agent qa_agent tts_agent) do (
+for %%A in (qa_agent tts_agent) do (
     echo.
     echo ---------------------------------------------------
     echo Configuring agents/%%A...

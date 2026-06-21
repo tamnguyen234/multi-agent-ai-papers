@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Topic } from '../../types/trend';
 import { formatDate } from '../../utils/formatters';
-import { arxivAbsUrl } from '../../utils/mediaUrl';
+import { externalAbsUrl } from '../../utils/mediaUrl';
 
 interface TopicPaperListProps {
   topic: Topic | null;
@@ -34,8 +34,8 @@ export const TopicPaperList: React.FC<TopicPaperListProps> = ({ topic }) => {
       ) : (
         <div className="topic-papers-container">
           {papers.map((paper) => {
-            // Check if arxiv_id is present or try to extract it from typical title/abstract patterns (if any)
-            const arxivId = (paper as any).arxiv_id;
+            // Check if external_id is present or try to extract it from typical title/abstract patterns (if any)
+            const externalId = (paper as any).external_id;
 
             return (
               <div key={paper.id} className="trend-paper-card">
@@ -47,14 +47,14 @@ export const TopicPaperList: React.FC<TopicPaperListProps> = ({ topic }) => {
                       📅 Xuất bản: {formatDate(paper.published)}
                     </span>
                   )}
-                  {arxivId && (
+                  {externalId && (
                     <a
-                      href={arxivAbsUrl(arxivId)}
+                      href={(paper as any).source_url || externalAbsUrl(externalId)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="arxiv-link"
                     >
-                      🔗 arXiv: {arxivId}
+                      🔗 Nguồn: {externalId}
                     </a>
                   )}
                 </div>

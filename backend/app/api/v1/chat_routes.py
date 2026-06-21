@@ -132,9 +132,7 @@ def post_chat_message(
     user_message = ChatMessage(
         chat_session_id=session.id,
         role="user",
-        content=message_in.question,
-        tts_path=None,
-        tts_timestamps=None
+        content=message_in.question
     )
     db.add(user_message)
     
@@ -147,9 +145,9 @@ def post_chat_message(
             "pdf_path": paper.pdf_path,
             "title": paper.title,
             "abstract": paper.abstract,
-            "summary": paper.summary,
+            "summary": paper.summary_vi,
             "question": message_in.question,
-            "arxiv_id": paper.arxiv_id,
+            "external_id": paper.external_id,
             "history": qa_history
         }
         agent_res = ask_question(payload)
@@ -158,9 +156,7 @@ def post_chat_message(
         assistant_message = ChatMessage(
             chat_session_id=session.id,
             role="assistant",
-            content=agent_res["answer"],
-            tts_path=None,
-            tts_timestamps=None
+            content=agent_res["answer"]
         )
         db.add(assistant_message)
         db.commit()
@@ -180,7 +176,7 @@ def post_chat_message(
         "session": session,
         "user_message": user_message,
         "assistant_message": assistant_message,
-        "qa_mode": agent_res.get("mode", settings.QA_MODE),
+        "qa_mode": agent_res.get("mode", "real"),
         "sources": agent_res.get("sources", [])
     }
 
@@ -213,18 +209,4 @@ def get_session_messages(
     
     return messages
 
-# --- Legacy/Old Router Endpoints to preserve backward compatibility ---
-
-@router.post("/{paper_id}")
-def chat_with_paper(paper_id: int, message: str, db: Session = Depends(get_db)):
-    """Interact with paper using RAG Agent."""
-    return {
-        "reply": "Mocked Q&A response",
-        "audio_url": None
-    }
-
-@router.get("/{paper_id}/history")
-def get_chat_history(paper_id: int, db: Session = Depends(get_db)):
-    """Fetch previous chat logs for a paper."""
-    return {"history": []}
 

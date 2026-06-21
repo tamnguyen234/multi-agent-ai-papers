@@ -3,7 +3,6 @@ import type {
   ChatSession,
   ChatMessage,
   ChatAskResponse,
-  TTSChatMessageResponse,
   SendChatMessageRequest,
 } from '../types/chat';
 
@@ -49,22 +48,3 @@ export async function sendChatMessage(payload: SendChatMessageRequest): Promise<
   return response.data;
 }
 
-/**
- * Synthesize TTS audio for an assistant chat message.
- * POST /api/v1/tts/chat-message
- * Payload: { message_id, voice?, language?, speed? }
- */
-export async function synthesizeChatMessageAudio(
-  messageId: number | string,
-  opts?: { voice?: string; language?: string; speed?: number }
-): Promise<TTSChatMessageResponse> {
-  const response = await client.post<TTSChatMessageResponse>('/tts/chat-message', {
-    message_id: Number(messageId),
-    voice: opts?.voice ?? 'vi_female',
-    language: opts?.language ?? 'vi',
-    speed: opts?.speed ?? 1.0,
-  }, {
-    timeout: 300000, // 300s for TTS synthesis execution
-  });
-  return response.data;
-}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { DigestEntry } from '../types/digest';
-import { formatScore, arxivAbsUrl } from '../utils/mediaUrl';
+import { formatScore, externalAbsUrl } from '../utils/mediaUrl';
 import AudioPlayer from './AudioPlayer';
 
 interface PaperDigestCardProps {
@@ -18,7 +18,7 @@ const PaperDigestCard: React.FC<PaperDigestCardProps> = ({ entry }) => {
   const { rank_position, paper } = entry;
   const audioSrc = paper.audio_abstract_url || paper.audio_abstract_path;
   const rankClass = rankBadgeColors[rank_position] || 'rank-default';
-  const arxivUrl = arxivAbsUrl(paper.arxiv_id);
+  const sourceUrl = externalAbsUrl(paper.external_id);
   const scoreLabel = formatScore(paper.score);
 
   return (
@@ -43,7 +43,7 @@ const PaperDigestCard: React.FC<PaperDigestCardProps> = ({ entry }) => {
 
       {/* Meta: arxiv_id + published */}
       <div className="digest-card__meta">
-        <span className="meta-tag">📄 {paper.arxiv_id}</span>
+        <span className="meta-tag">📄 {paper.external_id}</span>
         {paper.published && (
           <span className="meta-tag">📅 {paper.published}</span>
         )}
@@ -53,8 +53,8 @@ const PaperDigestCard: React.FC<PaperDigestCardProps> = ({ entry }) => {
       </div>
 
       {/* Summary */}
-      {paper.summary && (
-        <p className="digest-card__summary">{paper.summary}</p>
+      {(paper.summary_vi || paper.summary_en) && (
+        <p className="digest-card__summary">{paper.summary_vi || paper.summary_en}</p>
       )}
 
       {/* Audio player */}
@@ -69,12 +69,12 @@ const PaperDigestCard: React.FC<PaperDigestCardProps> = ({ entry }) => {
       {/* Footer actions */}
       <div className="digest-card__footer">
         <a
-          href={arxivUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-paper-link btn-paper-link--arxiv"
         >
-          🔗 Xem trên arXiv
+          🔗 Nguồn bài báo
         </a>
       </div>
     </article>

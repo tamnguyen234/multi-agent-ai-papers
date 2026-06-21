@@ -23,9 +23,7 @@ class ChatMessageResponse(BaseModel):
     session_id: int
     role: str
     content: str
-    tts_path: Optional[str] = None
-    tts_url: Optional[str] = None
-    tts_timestamps: Optional[Any] = None
+
     created_at: datetime
 
     class Config:

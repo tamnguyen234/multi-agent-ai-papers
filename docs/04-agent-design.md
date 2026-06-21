@@ -20,117 +20,13 @@ Mỗi Agent:
 
 ---
 
-## 1. Summarizer Agent (Port 8101)
+## Ghi chú về thiết kế kiến trúc cũ
 
-### Nhiệm vụ
+Trước đây, hệ thống có **Summarizer Agent (Port 8101)** và **Trend Agent (Port 8102)**.
+- **Summarizer Agent** đã bị **xóa bỏ** hoàn toàn khỏi dự án.
+- **Trend Agent** đã được cấu trúc lại thành một library nội bộ nằm trong `backend/app/services/trend_model/`. Nó không còn chạy như một microservice độc lập (cổng 8102) nữa, mà được gọi trực tiếp bởi Backend Gateway.
 
-Thu thập các bài báo AI nổi bật từ **arXiv RSS** hàng ngày, lọc và sinh tóm tắt học thuật.
-
-### Cấu hình
-
-| Biến môi trường | Mô tả | Giá trị mẫu |
-|---|---|---|
-| `SUMMARIZER_MODE` | `real` hoặc `mock_fallback` | `mock_fallback` |
-| `ARXIV_CATEGORIES` | Danh mục arXiv cần theo dõi | `cs.AI,cs.CL,cs.LG,cs.CV` |
-| `ARXIV_MAX_RESULTS` | Số bài tối đa cào/ngày | `50` |
-| `ARXIV_DAYS_BACK` | Số ngày nhìn lại | `2` |
-| `SUMMARY_MAX_SENTENCES` | Số câu tóm tắt tối đa | `3` |
-| `SUMMARY_MAX_CHARS` | Ký tự tóm tắt tối đa | `700` |
-
-### API Endpoints nội bộ
-
-| Method | Path | Mô tả |
-|---|---|---|
-| GET | `/health` | Health check |
-| POST | `/summarize` | Lấy top papers từ arXiv và tóm tắt |
-
-### Luồng xử lý (real mode)
-
-```
-Backend POST /summarize
-  ↓
-Agent: feedparser → arXiv RSS Feed
-  ↓
-Lọc theo ARXIV_CATEGORIES, sắp xếp theo score (citations/relevance)
-  ↓
-Chọn top 5 papers nổi bật
-  ↓
-Với mỗi paper: dùng transformers (BART/T5) sinh summary
-  ↓
-Trả về: [{ arxiv_id, title, authors, abstract, summary, score, pdf_url }]
-  ↓
-Backend lưu vào DB (papers table) + tạo digest ngày hôm nay
-```
-
-### Luồng xử lý (mock_fallback mode)
-
-```
-Backend POST /summarize
-  ↓
-Agent trả về dữ liệu mock cố định (không gọi arXiv)
-  ↓
-Backend lưu mock data vào DB
-```
-
-### Ghi chú quan trọng
-
-- Timeout gọi Summarizer: **120 giây** (vì download model nặng lần đầu)
-- Mode `mock_fallback` dùng cho demo nhanh không cần model AI
-
----
-
-## 2. Trend Agent (Port 8102)
-
-### Nhiệm vụ
-
-Phân tích cụm chủ đề (Topic Modeling) từ các abstracts bài báo đã lưu trong DB.
-
-### Cấu hình
-
-| Biến môi trường | Mô tả | Giá trị mẫu |
-|---|---|---|
-| `TREND_MODE` | `bertopic` hoặc `rule_based_fallback` | `rule_based_fallback` |
-| `TREND_EMBEDDING_MODEL` | Model sentence-transformers | `all-MiniLM-L6-v2` |
-| `TREND_MIN_TOPIC_SIZE` | Số paper tối thiểu mỗi topic | `2` |
-| `TREND_TOP_N_WORDS` | Số từ khóa đại diện mỗi topic | `8` |
-| `TREND_UMAP_N_NEIGHBORS` | UMAP neighbors | `5` |
-| `TREND_HDBSCAN_MIN_CLUSTER_SIZE` | HDBSCAN min cluster | `2` |
-
-### API Endpoints nội bộ
-
-| Method | Path | Mô tả |
-|---|---|---|
-| GET | `/health` | Health check |
-| POST | `/analyze` | Nhận abstracts, trả về topic clusters |
-
-### Luồng xử lý (bertopic mode)
-
-```
-Backend POST /analyze  (body: [{ paper_id, abstract }])
-  ↓
-Agent: Sentence-Transformers → vector embeddings cho mỗi abstract
-  ↓
-UMAP: Giảm số chiều vector (high-dim → 5D)
-  ↓
-HDBSCAN: Phân cụm mật độ tự động
-  ↓
-BERTopic: Trích xuất từ khóa đại diện mỗi cụm
-  ↓
-Trả về: [{ topic_name, keywords, paper_ids, confidence_scores }]
-  ↓
-Backend: lưu topics + paper_topics vào DB
-```
-
-### Luồng xử lý (rule_based_fallback mode)
-
-```
-Backend POST /analyze
-  ↓
-Agent: dùng danh sách từ khóa cố định (LLM, Vision, NLP...)
-Khớp từ khóa với abstract → phân loại topic thủ công
-  ↓
-Trả về topic assignments (không cần model AI nặng)
-```
+Do đó, hiện tại hệ thống chỉ còn chạy độc lập **2 Agents**: Q&A Agent (Port 8103) và TTS Agent (Port 8104).
 
 ---
 
@@ -263,8 +159,6 @@ Trả về base64 mock audio (không cần GPU/model nặng)
 
 | Agent | Mode Real | Mode Fallback | Trade-off |
 |---|---|---|---|
-| Summarizer | arXiv RSS + BART/T5 | Dữ liệu mock cố định | Real cần GPU + download model |
-| Trend | BERTopic (ML) | Rule-based keyword matching | Real cần 4GB+ RAM |
 | Q&A | RAG + Ollama LLM | Mock answer | Real cần Ollama server + 8GB+ RAM |
 | TTS | SpeechT5/Bark | Silence placeholder | Real cần GPU hoặc CPU chậm |
 

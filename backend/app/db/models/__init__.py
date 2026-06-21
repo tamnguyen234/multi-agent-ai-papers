@@ -5,7 +5,6 @@ from app.db.models.digest import Digest, DigestPaper
 from app.db.models.audio import AudioAbstract
 from app.db.models.chat import ChatSession, ChatMessage
 from app.db.models.topic import Topic, PaperTopic
-from app.db.models.notification import Notification
 
 __all__ = [
     "Base",
@@ -17,6 +16,5 @@ __all__ = [
     "ChatSession",
     "ChatMessage",
     "Topic",
-    "PaperTopic",
-    "Notification"
+    "PaperTopic"
 ]

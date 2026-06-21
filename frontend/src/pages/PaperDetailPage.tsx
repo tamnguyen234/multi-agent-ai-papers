@@ -5,7 +5,7 @@ import { getApiErrorMessage } from '../utils/apiError';
 import type { Paper } from '../types/paper';
 import AudioPlayer from '../components/AudioPlayer';
 import { formatAuthors, formatDate, formatScore } from '../utils/formatters';
-import { buildMediaUrl, arxivAbsUrl } from '../utils/mediaUrl';
+import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
@@ -118,7 +118,7 @@ export const PaperDetailPage: React.FC = () => {
 
   const pdfUrl = buildMediaUrl(paper.pdf_url || paper.pdf_path);
   const audioUrl = buildMediaUrl(paper.audio_abstract_url || paper.audio_abstract_path);
-  const arxivUrl = arxivAbsUrl(paper.arxiv_id);
+  const sourceUrl = paper.source_url || externalAbsUrl(paper.external_id);
   const authorsStr = formatAuthors(paper.authors);
   const dateStr = formatDate(paper.published);
   const scoreLabel = formatScore(paper.score);
@@ -151,9 +151,9 @@ export const PaperDetailPage: React.FC = () => {
       {/* Metadata row */}
       <div className="detail-meta">
         <div className="detail-meta__item">
-          <span className="detail-meta__label">arXiv ID</span>
-          <a href={arxivUrl} target="_blank" rel="noopener noreferrer" className="detail-meta__link">
-            {paper.arxiv_id} ↗
+          <span className="detail-meta__label">ID Nguồn</span>
+          <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="detail-meta__link">
+            {paper.external_id} ↗
           </a>
         </div>
         <div className="detail-meta__item">
@@ -175,11 +175,11 @@ export const PaperDetailPage: React.FC = () => {
       )}
 
       {/* Summary */}
-      {paper.summary && (
+      {paper.summary_vi && (
         <section className="detail-section">
-          <h2 className="detail-section__title">📝 Tóm tắt (AI Summary)</h2>
+          <h2 className="detail-section__title">📝 Tóm tắt tiếng Việt</h2>
           <div className="detail-text-block detail-text-block--summary">
-            {paper.summary}
+            {paper.summary_vi}
           </div>
         </section>
       )}
@@ -261,13 +261,13 @@ export const PaperDetailPage: React.FC = () => {
           💬 Hỏi đáp với bài báo này
         </Link>
         <a
-          href={arxivUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-detail-action btn-detail-action--arxiv"
-          id={`detail-arxiv-${paper.id}`}
+          id={`detail-source-${paper.id}`}
         >
-          🔗 Xem trên arXiv
+          🔗 Xem nguồn gốc
         </a>
         <button
           className="btn-detail-action btn-detail-action--back"

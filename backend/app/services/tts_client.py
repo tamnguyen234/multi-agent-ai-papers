@@ -71,7 +71,7 @@ def synthesize_text(payload: dict) -> dict:
         )
         
     return {
-        "mode": data.get("mode", "mock"),
+        "mode": data.get("mode", "real"),
         "audio_base64": data["audio_base64"],
         "mime_type": data["mime_type"],
         "file_extension": data["file_extension"],

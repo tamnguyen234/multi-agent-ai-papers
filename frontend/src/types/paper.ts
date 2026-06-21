@@ -11,14 +11,16 @@ export interface AudioAbstract {
 
 export interface Paper {
   id: number;
-  arxiv_id: string;
+  external_id: string;
   title: string;
   abstract: string;
-  summary: string | null;
+  summary_en: string | null;
+  summary_vi: string | null;
   /** Backend returns List[str] but may also be null */
   authors: string[] | null;
   published: string | null; // ISO date "YYYY-MM-DD"
   pdf_path: string | null;
+  source_url: string | null;
   pdf_url: string | null;
   score: number;
   has_audio: boolean;

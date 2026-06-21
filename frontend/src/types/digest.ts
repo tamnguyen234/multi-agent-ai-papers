@@ -2,9 +2,10 @@
 
 export interface DigestPaper {
   id: number;
-  arxiv_id: string;
+  external_id: string;
   title: string;
-  summary: string | null;
+  summary_en: string | null;
+  summary_vi: string | null;
   score: number;
   published: string | null; // ISO date string "YYYY-MM-DD"
   has_audio: boolean;

@@ -5,7 +5,6 @@ from fastapi import HTTPException, status
 from app.db.models.paper import Paper
 from app.db.models.topic import Topic, PaperTopic
 from app.core.config import settings
-from app.services import trend_client
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,7 @@ def build_paper_payload(papers: list[Paper]) -> list[dict]:
             "id": paper.id,
             "title": paper.title,
             "abstract": paper.abstract or "",
-            "summary": paper.summary or ""
+            "summary": paper.summary_en or ""
         })
     return payload
 
@@ -60,13 +59,79 @@ def analyze_and_store_trends(db: Session, limit: int | None = None) -> dict:
             "topics": []
         }
         
-    # 2. Call Trend Agent
-    payload = {
-        "papers": build_paper_payload(papers),
-        "mode": settings.TREND_MODE
-    }
+    # 2. Call local Trend Agent model directly
+    from app.services.trend_model.services import pipeline_service
     
-    agent_res = trend_client.analyze_trends(payload)
+    # --- MOCK LLM FIX ---
+    # Patch requests.post to fix model hallucination and switch to llama3.2:1b
+    original_post = pipeline_service.requests.post
+    def patched_post(url, json=None, **kwargs):
+        if url == "http://localhost:11434/api/generate" and json:
+            json["model"] = "llama3.2:1b"
+            # Prevent infinite token generation loops
+            json["options"] = {"num_predict": 10, "stop": ["\n", ".", ","]}
+        return original_post(url, json=json, **kwargs)
+    pipeline_service.requests.post = patched_post
+    # --------------------
+
+    process_topic_clustering = pipeline_service.process_topic_clustering
+    generate_embeddings = pipeline_service.generate_embeddings
+    # -----------------------------------------------------
+    
+    
+    class PaperMock:
+        def __init__(self, id, title, abstract, published):
+            self.id = id
+            self.title = title
+            self.abstract = abstract
+            self.published = published
+            self.paper_vector = None
+            self.umap_x = None
+            self.umap_y = None
+
+    mock_papers = [
+        PaperMock(id=p.id, title=p.title, abstract=p.abstract, published=p.published)
+        for p in papers
+    ]
+    
+    # Generate embeddings
+    texts_to_process = [f"{p.title}. {p.abstract}" for p in mock_papers]
+    vectors = generate_embeddings(texts_to_process)
+    for i, p in enumerate(mock_papers):
+        p.paper_vector = vectors[i].tolist()
+        
+    # Process clustering
+    graph = process_topic_clustering(None, mock_papers)
+    
+    # Reconstruct topics from graph nodes
+    topics_map = {}
+    for node in graph["nodes"]:
+        topics_map[node["id"]] = {
+            "name": node["name"],
+            "description": "Keywords: " + ", ".join(node["keywords"]),
+            "paper_ids": [],
+            "confidence_score": 0.85 # Default confidence since pipeline_service doesn't return one
+        }
+    
+    for mp in mock_papers:
+        if mp.umap_x is not None and mp.umap_y is not None:
+            closest_node_id = None
+            min_dist = float('inf')
+            for node in graph.get("nodes", []):
+                dist = math.sqrt((mp.umap_x - node["x"])**2 + (mp.umap_y - node["y"])**2)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_node_id = node["id"]
+            
+            if closest_node_id is not None:
+                topics_map[closest_node_id]["paper_ids"].append(mp.id)
+                
+    final_topics = [t for t in topics_map.values() if len(t["paper_ids"]) > 0]
+    
+    agent_res = {
+        "mode": getattr(settings, "TREND_MODE", "rule_based"),
+        "topics": final_topics
+    }
     
     # Track the successfully saved topics and confidence counts to return in API response
     processed_topics = []

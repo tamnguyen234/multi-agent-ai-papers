@@ -16,12 +16,12 @@ export const getTrends = async (limitTopics = 20, limitPapersPerTopic = 10): Pro
 
 /**
  * Trigger the Trend Agent to analyze trends and save results to DB
- * Increased timeout to 60 seconds because BERTopic clustering takes time
+ * Increased timeout to 180 seconds because BERTopic clustering takes time
  */
 export const analyzeTrends = async (limit?: number): Promise<TrendAnalyzeResponse> => {
   const response = await client.post<TrendAnalyzeResponse>('/trend/analyze', null, {
     params: limit ? { limit } : undefined,
-    timeout: 60000 // 60 seconds timeout
+    timeout: 180000 // 180 seconds timeout
   });
   return response.data;
 };

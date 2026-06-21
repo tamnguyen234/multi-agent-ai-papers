@@ -7,8 +7,6 @@ class AudioAbstractResponse(BaseModel):
     file_path: str
     audio_url: Optional[str] = None
     duration_seconds: Optional[int] = None
-    voice: Optional[str] = None
-    language: Optional[str] = None
     paper_timestamps: Optional[Any] = None
     created_at: datetime
 
@@ -32,10 +30,12 @@ class LazyAudioAbstractResponse(BaseModel):
 
 class PaperResponse(BaseModel):
     id: int
-    arxiv_id: str
+    external_id: str
     title: str
     abstract: str
-    summary: Optional[str] = None
+    summary_en: Optional[str] = None
+    summary_vi: Optional[str] = None
+    source_url: Optional[str] = None
     authors: Optional[List[str]] = None
     published: Optional[date] = None
     pdf_path: Optional[str] = None
