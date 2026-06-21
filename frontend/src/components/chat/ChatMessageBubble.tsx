@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '../../types/chat';
 import { synthesizeChatMessageAudio } from '../../api/chatApi';
 import AudioPlayer from '../AudioPlayer';
@@ -85,7 +86,9 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message, onTtsUpd
         </div>
 
         {/* Content */}
-        <div className="chat-bubble__content">{message.content}</div>
+        <div className="chat-bubble__content">
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
 
         {/* TTS section — only for assistant */}
         {isAssistant && (
