@@ -92,8 +92,8 @@ def generate_audio_for_paper_summary(
                 "audio_path": existing_audio.file_path,
                 "audio_url": existing_audio.audio_url,
                 "duration_seconds": existing_audio.duration_seconds,
-                "voice": existing_audio.voice,
-                "language": existing_audio.language,
+                "voice": "Ngọc Linh",
+                "language": "vi",
                 "mode": "existing",
                 "audio_abstract": existing_audio
             }
@@ -110,18 +110,10 @@ def generate_audio_for_paper_summary(
     active_generations.add(paper.id)
     
     try:
-        # Determine the text to read (prioritize Vietnamese translations if available)
-        raw_text = paper.summary_vi
-        language_to_use = "vi"
+        # Determine the text to read
+        raw_text = paper.abstract_vi
         if not raw_text or not raw_text.strip():
-            raw_text = paper.abstract_vi
-            language_to_use = "vi"
-        if not raw_text or not raw_text.strip():
-            raw_text = paper.abstract
-            language_to_use = "en"
-        if not raw_text or not raw_text.strip():
-            raw_text = paper.summary
-            language_to_use = "en"
+            raw_text = paper.abstract_en
             
         if not raw_text or not raw_text.strip():
             raise HTTPException(
@@ -147,14 +139,14 @@ def generate_audio_for_paper_summary(
         # Log voice parameters
         logger.info(
             f"Starting TTS generation for paper ID {paper.id}. "
-            f"Requested Voice: {voice}, Resolved Voice: {resolved_voice}, Language: {language_to_use}"
+            f"Requested Voice: {voice}, Resolved Voice: {resolved_voice}, Language: {language}"
         )
         
         # Call TTS Agent
         payload = {
             "text": sanitized_text,
             "voice": resolved_voice,
-            "language": language_to_use,
+            "language": language,
             "speed": 1.0
         }
         
@@ -190,17 +182,13 @@ def generate_audio_for_paper_summary(
                 existing_audio.file_path = relative_path
                 existing_audio.duration_seconds = int(agent_res["duration_seconds"])
                 existing_audio.paper_timestamps = agent_res["timestamps"]
-                existing_audio.voice = resolved_voice # Store actual resolved voice name in DB
-                existing_audio.language = language
                 db.add(existing_audio)
             else:
                 existing_audio = AudioAbstract(
                     paper_id=paper.id,
                     file_path=relative_path,
                     duration_seconds=int(agent_res["duration_seconds"]),
-                    paper_timestamps=agent_res["timestamps"],
-                    voice=resolved_voice, # Store actual resolved voice name in DB
-                    language=language
+                    paper_timestamps=agent_res["timestamps"]
                 )
                 db.add(existing_audio)
                 
@@ -223,8 +211,8 @@ def generate_audio_for_paper_summary(
                 "audio_path": existing_audio.file_path,
                 "audio_url": existing_audio.audio_url,
                 "duration_seconds": existing_audio.duration_seconds,
-                "voice": existing_audio.voice,
-                "language": existing_audio.language,
+                "voice": resolved_voice,
+                "language": language,
                 "mode": "generated",
                 "audio_abstract": existing_audio
             }

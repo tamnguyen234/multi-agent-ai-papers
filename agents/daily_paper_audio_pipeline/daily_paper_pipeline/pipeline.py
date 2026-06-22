@@ -1,0 +1,229 @@
+from __future__ import annotations
+from datetime import date, datetime
+from pathlib import Path
+
+from sqlalchemy.orm import Session
+import logging
+
+logger = logging.getLogger(__name__)
+
+from daily_paper_pipeline.agent_clients import TranslateClient, TTSClient
+from daily_paper_pipeline.config import PipelineSettings, get_settings
+from daily_paper_pipeline.db_models import AudioAbstract, Digest, DigestPaper, Paper
+from daily_paper_pipeline.hf_daily_papers import fetch_hf_daily_papers
+from daily_paper_pipeline.schemas import DailyPipelineResult, HFDailyPaper, PipelinePaperResult
+from daily_paper_pipeline.storage import save_tts_audio
+
+
+def _get_or_create_digest(db: Session, digest_date: date) -> Digest:
+    digest = db.query(Digest).filter(Digest.digest_date == digest_date).first()
+    if digest:
+        return digest
+    digest = Digest(digest_date=digest_date)
+    db.add(digest)
+    db.flush()
+    return digest
+
+
+def _upsert_paper(db: Session, hf_paper: HFDailyPaper, summary_vi: str | None) -> Paper:
+    paper = db.query(Paper).filter(Paper.external_id == hf_paper.external_id).first()
+    data = {
+        "title": hf_paper.title,
+        "abstract_en": hf_paper.abstract_en,
+        "abstract_vi": summary_vi,
+        "authors": hf_paper.authors,
+        "published": hf_paper.published,
+        "source_url": hf_paper.source_url,
+        "source": "huggingface",
+        "score": hf_paper.score,
+    }
+
+    if paper is None:
+        paper = Paper(external_id=hf_paper.external_id, has_audio=False, **data)
+        db.add(paper)
+    else:
+        for key, value in data.items():
+            setattr(paper, key, value)
+    db.flush()
+    return paper
+
+
+def _replace_digest_ranks(db: Session, digest: Digest, ranked_papers: list[tuple[int, Paper]]) -> None:
+    db.query(DigestPaper).filter(DigestPaper.digest_id == digest.id).delete()
+    db.flush()
+    for rank_position, paper in ranked_papers:
+        db.add(DigestPaper(digest_id=digest.id, paper_id=paper.id, rank_position=rank_position))
+    db.flush()
+
+
+def _upsert_audio_abstract(db: Session, paper: Paper, stored_audio) -> AudioAbstract:
+    audio = db.query(AudioAbstract).filter(AudioAbstract.paper_id == paper.id).first()
+    if audio is None:
+        audio = AudioAbstract(paper_id=paper.id, file_path=stored_audio.file_path)
+        db.add(audio)
+
+    audio.file_path = stored_audio.file_path
+    audio.duration_seconds = stored_audio.duration_seconds
+    audio.paper_timestamps = stored_audio.timestamps
+    paper.has_audio = True
+    db.flush()
+    return audio
+
+
+def run_daily_summary_pipeline(
+    db: Session,
+    digest_date: date | None = None,
+    project_root: str | Path = ".",
+    settings: PipelineSettings | None = None,
+    skip_audio: bool = False,
+) -> DailyPipelineResult:
+    settings = settings or get_settings()
+    digest_date = digest_date or datetime.now().date()
+
+    translate_client = TranslateClient(settings)
+    tts_client = TTSClient(settings)
+
+    hf_papers = fetch_hf_daily_papers(limit=5, settings=settings, target_date=digest_date)
+    if not hf_papers:
+        logger.warning(f"No Hugging Face daily papers found for {digest_date}.")
+        return DailyPipelineResult(
+            digest_id=0,
+            digest_date=digest_date,
+            total_papers=0,
+            papers=[],
+        )
+    if len(hf_papers) < 5:
+        logger.warning(f"Expected 5 Hugging Face daily papers, got {len(hf_papers)}.")
+
+    digest = _get_or_create_digest(db, digest_date)
+
+    # Check if we should update based on upvote/content changes
+    existing_digest_papers = (
+        db.query(DigestPaper, Paper)
+        .join(Paper, DigestPaper.paper_id == Paper.id)
+        .filter(DigestPaper.digest_id == digest.id)
+        .order_by(DigestPaper.rank_position)
+        .all()
+    )
+
+    should_update = False
+    if len(existing_digest_papers) != len(hf_papers):
+        should_update = True
+    else:
+        for idx, (existing_dp, existing_p) in enumerate(existing_digest_papers):
+            new_p = hf_papers[idx]
+            if existing_dp.rank_position != (idx + 1):
+                should_update = True
+                break
+            if existing_p.external_id != new_p.external_id:
+                should_update = True
+                break
+            if abs(existing_p.score - new_p.upvotes) > 0.01:
+                should_update = True
+                break
+
+    if not should_update and len(existing_digest_papers) > 0:
+        logger.info(f"No changes in upvotes or papers for {digest_date}. Skipping update.")
+        result_items = []
+        for existing_dp, existing_p in existing_digest_papers:
+            audio_path = None
+            audio_url = None
+            if existing_p.audio_abstract:
+                audio_path = existing_p.audio_abstract.file_path
+                audio_url = "/static/" + existing_p.audio_abstract.file_path.lstrip("/")
+                
+            result_items.append(
+                PipelinePaperResult(
+                    paper_id=int(existing_p.id),
+                    external_id=existing_p.external_id,
+                    rank_position=existing_dp.rank_position,
+                    title=existing_p.title,
+                    abstract_en=existing_p.abstract_en or "",
+                    abstract_vi=existing_p.abstract_vi,
+                    audio_path=audio_path,
+                    audio_url=audio_url,
+                )
+            )
+        return DailyPipelineResult(
+            digest_id=int(digest.id),
+            digest_date=digest.digest_date,
+            total_papers=len(result_items),
+            papers=result_items,
+        )
+
+    ranked_db_papers: list[tuple[int, Paper]] = []
+    result_items: list[PipelinePaperResult] = []
+
+    try:
+        for hf_paper in hf_papers:
+            rank_position = hf_paper.rank_position or len(ranked_db_papers) + 1
+            
+            # Check if this paper already exists in DB and has translation
+            existing_p = db.query(Paper).filter(Paper.external_id == hf_paper.external_id).first()
+            if existing_p and existing_p.abstract_vi:
+                logger.info(f"Reusing existing Vietnamese translation for paper {hf_paper.external_id}")
+                summary_vi_text = existing_p.abstract_vi
+            else:
+                logger.info(f"Translating abstract_en for paper {hf_paper.external_id}...")
+                try:
+                    translation = translate_client.translate_to_vi(hf_paper.abstract_en)
+                    summary_vi_text = translation.translated_text
+                    logger.info("Translation complete.")
+                except Exception as e:
+                    logger.warning(f"Translation failed (Server down?), using fallback: {e}")
+                    summary_vi_text = f"[Bản dịch giả lập] {hf_paper.abstract_en}"
+                    
+            paper = _upsert_paper(db, hf_paper, summary_vi_text)
+            ranked_db_papers.append((rank_position, paper))
+
+        _replace_digest_ranks(db, digest, ranked_db_papers)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    for rank_position, paper in ranked_db_papers:
+        audio_path = None
+        audio_url = None
+        if not skip_audio:
+            try:
+                if not paper.abstract_vi:
+                    raise ValueError(f"Paper {paper.external_id} has no Vietnamese abstract.")
+                
+                # Check if paper already has audio abstract in DB and has_audio is True
+                existing_audio = db.query(AudioAbstract).filter(AudioAbstract.paper_id == paper.id).first()
+                if existing_audio and paper.has_audio:
+                    logger.info(f"Reusing existing audio abstract for paper {paper.external_id}")
+                    audio_path = existing_audio.file_path
+                    audio_url = "/static/" + existing_audio.file_path.lstrip("/")
+                else:
+                    tts_result = tts_client.synthesize_vi(paper.abstract_vi)
+                    stored_audio = save_tts_audio(tts_result, project_root=project_root, settings=settings)
+                    _upsert_audio_abstract(db, paper, stored_audio)
+                    db.commit()
+                    audio_path = stored_audio.file_path
+                    audio_url = stored_audio.audio_url
+            except Exception:
+                db.rollback()
+                raise
+
+        result_items.append(
+            PipelinePaperResult(
+                paper_id=int(paper.id),
+                external_id=paper.external_id,
+                rank_position=rank_position,
+                title=paper.title,
+                abstract_en=paper.abstract_en or "",
+                abstract_vi=paper.abstract_vi,
+                audio_path=audio_path,
+                audio_url=audio_url,
+            )
+        )
+
+    return DailyPipelineResult(
+        digest_id=int(digest.id),
+        digest_date=digest.digest_date,
+        total_papers=len(result_items),
+        papers=result_items,
+    )
+

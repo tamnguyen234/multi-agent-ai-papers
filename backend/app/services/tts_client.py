@@ -71,51 +71,10 @@ def synthesize_text(payload: dict) -> dict:
         )
         
     return {
-        "mode": data.get("mode", "mock"),
+        "mode": data.get("mode", "real"),
         "audio_base64": data["audio_base64"],
         "mime_type": data["mime_type"],
         "file_extension": data["file_extension"],
         "duration_seconds": data.get("duration_seconds", 1.0),
         "timestamps": data.get("timestamps", [])
     }
-
-from typing import Optional
-
-def translate_text(text: str, mode: Optional[str] = None) -> dict:
-    """
-    Call the TTS Agent to translate English text into Vietnamese.
-    """
-    url = f"{settings.TTS_AGENT_URL.rstrip('/')}/tts/translate"
-    payload = {"text": text}
-    if mode:
-        payload["mode"] = mode
-        
-    logger.info(f"Sending translate request to TTS Agent at {url}. Text length: {len(text)}")
-    
-    try:
-        import httpx
-        response = httpx.post(url, json=payload, timeout=120.0)
-        response.raise_for_status()
-    except Exception as e:
-        logger.exception(f"Error communicating with TTS Agent for translation: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error communicating with TTS Agent: {str(e)}"
-        )
-        
-    try:
-        data = response.json()
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid response from TTS Agent: Response is not valid JSON."
-        )
-        
-    if "translated_text" not in data:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Invalid response from TTS Agent: missing 'translated_text' field."
-        )
-        
-    return data
-

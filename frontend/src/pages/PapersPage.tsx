@@ -52,7 +52,7 @@ export const PapersPage: React.FC = () => {
         const authorsStr = Array.isArray(p.authors) ? p.authors.join(' ') : (p.authors ?? '');
         return (
           p.title.toLowerCase().includes(q) ||
-          p.arxiv_id.toLowerCase().includes(q) ||
+          p.external_id.toLowerCase().includes(q) ||
           authorsStr.toLowerCase().includes(q)
         );
       });
@@ -220,7 +220,7 @@ export const PapersPage: React.FC = () => {
         <EmptyState
           title={papers.length === 0 ? 'Chưa có bài báo nào' : 'Không tìm thấy kết quả phù hợp'}
           message={papers.length === 0
-            ? 'Hãy chạy Daily Digest Job từ Dashboard để lấy bài báo mới từ HuggingFace.'
+            ? 'Hãy chạy Daily Digest Job từ Dashboard để lấy bài báo mới.'
             : 'Thử thay đổi từ khóa hoặc bộ lọc của bạn.'}
           icon={papers.length === 0 ? '📭' : '🔎'}
           actionLabel={hasActiveFilters ? 'Xóa bộ lọc' : undefined}

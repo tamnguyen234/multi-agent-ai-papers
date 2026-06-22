@@ -740,8 +740,8 @@ export const TrendsPage: React.FC = () => {
                               >
                                 <div className="accordion-paper-card__body">
                                   <h4 className="accordion-paper-title">{paper.title}</h4>
-                                  {paper.abstract && (
-                                    <p className="accordion-paper-abstract">{paper.abstract}</p>
+                                  {paper.abstract_en && (
+                                    <p className="accordion-paper-abstract">{paper.abstract_en}</p>
                                   )}
                                 </div>
                                 <div className="accordion-paper-card__footer">

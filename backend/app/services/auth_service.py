@@ -6,8 +6,6 @@ class AuthService:
 
     def authenticate_user(self, email: str, password: str):
         """Authenticate user login."""
-        pass
 
     def create_user(self, user_schema):
         """Create new user account."""
-        pass

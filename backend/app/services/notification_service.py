@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.db.models.user import User
-from app.db.models.notification import Notification
 from app.db.models.digest import Digest
 from app.services.email_service import EmailService
 import logging
@@ -33,22 +32,22 @@ def build_digest_html(digest_date: str, papers: list) -> str:
         paper = dp.paper
         rank = dp.rank_position
         authors_str = ", ".join(paper.authors) if isinstance(paper.authors, list) else str(paper.authors)
-        arxiv_url = f"https://arxiv.org/abs/{paper.arxiv_id}"
+        source_url = paper.source_url if paper.source_url else f"https://huggingface.co/papers/{paper.external_id}"
         
         html += f"""
             <div class="paper">
                 <div>
                     <span class="rank">#{rank}</span>
-                    <a class="title" href="{arxiv_url}">{paper.title}</a>
+                    <a class="title" href="{source_url}">{paper.title}</a>
                 </div>
                 <div class="meta">
-                    <strong>arXiv ID:</strong> {paper.arxiv_id} | 
+                    <strong>ID:</strong> {paper.external_id} | 
                     <strong>Published:</strong> {paper.published} | 
                     <strong>Score:</strong> <span class="score">{paper.score}</span>
                 </div>
                 <div class="meta"><strong>Authors:</strong> {authors_str}</div>
                 <div class="summary">
-                    <strong>Summary:</strong> {paper.summary}
+                    <strong>Abstract (VI):</strong> {paper.abstract_vi}
                 </div>
             </div>
         """
@@ -67,9 +66,9 @@ def build_digest_text(digest_date: str, papers: list) -> str:
         rank = dp.rank_position
         authors_str = ", ".join(paper.authors) if isinstance(paper.authors, list) else str(paper.authors)
         text_content += f"#{rank} {paper.title}\n"
-        text_content += f"arXiv ID: {paper.arxiv_id} | Score: {paper.score} | Published: {paper.published}\n"
+        text_content += f"ID: {paper.external_id} | Score: {paper.score} | Published: {paper.published}\n"
         text_content += f"Authors: {authors_str}\n"
-        text_content += f"Summary: {paper.summary}\n\n"
+        text_content += f"Abstract (VI): {paper.abstract_vi}\n\n"
         text_content += "-" * 40 + "\n\n"
     return text_content
 
@@ -86,7 +85,6 @@ class NotificationService:
         """
         Sends daily digest emails to all users who opted-in for notifications.
         Catches individual errors so a failure for one user doesn't block the rest.
-        Creates/updates notification records as required by the unique constraint.
         """
         logger.info("Starting send_daily_digest_notifications")
         
@@ -118,42 +116,11 @@ class NotificationService:
                 text_content=text_content
             )
             
-            status_val = "sent" if success else "failed"
-            sent_at_val = datetime.now() if success else None
-            error_msg_val = None if success else "SMTP delivery failure"
-            
-            # Record notification status
-            try:
-                noti = db.query(Notification).filter(
-                    Notification.user_id == user.id,
-                    Notification.digest_id == digest.id,
-                    Notification.channel == "email"
-                ).first()
-                
-                if noti:
-                    noti.status = status_val
-                    noti.sent_at = sent_at_val
-                    noti.error_message = error_msg_val
-                else:
-                    noti = Notification(
-                        user_id=user.id,
-                        digest_id=digest.id,
-                        channel="email",
-                        status=status_val,
-                        sent_at=sent_at_val,
-                        error_message=error_msg_val
-                    )
-                    db.add(noti)
-                db.commit()
-                
-                if success:
-                    sent_count += 1
-                else:
-                    failed_count += 1
-                    
-            except Exception as e:
-                logger.error(f"Failed to save notification record for user {user.username}: {str(e)}")
-                db.rollback()
+            if success:
+                logger.info(f"Successfully sent digest email to {user.email}")
+                sent_count += 1
+            else:
+                logger.error(f"Failed to send digest email to {user.email}")
                 failed_count += 1
                 
         return {

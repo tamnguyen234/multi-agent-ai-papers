@@ -1,4 +1,3 @@
-import os
 import re
 import time
 import uuid
@@ -117,61 +116,8 @@ def save_audio_abstract(upload_file: UploadFile, filename: Optional[str] = None)
     rel_path = file_path.relative_to(get_project_root())
     return rel_path.as_posix()
 
-def save_audio_chat_message(upload_file: UploadFile, filename: Optional[str] = None) -> str:
-    """Validate extension and save audio chat message. Returns relative path with forward slashes."""
-    orig_name = filename or upload_file.filename or ""
-    validate_extension(orig_name, [".wav", ".mp3", ".m4a"])
-    
-    base_dir = get_project_root() / "data" / "audio_chat_message"
-    dated_dir = build_dated_dir(base_dir)
-    file_path = save_upload_file(upload_file, dated_dir, filename)
-    
-    rel_path = file_path.relative_to(get_project_root())
-    return rel_path.as_posix()
 
-def save_audio_chat_bytes(audio_bytes: bytes, extension: str = ".wav", prefix: str = "chat_tts") -> dict:
-    """
-    Generate a secure UUID filename internally, validate extension, protect against path traversal,
-    save bytes to data/audio_chat_message/yyyy/mm/dd/ and return relative_path and url.
-    """
-    allowed_extensions = [".wav", ".mp3", ".ogg", ".m4a"]
-    ext = extension.lower()
-    if ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file extension. Allowed extensions are: {', '.join(allowed_extensions)}"
-        )
-        
-    # Generate secure name internally
-    secure_name = f"{prefix}_{uuid.uuid4().hex}{ext}"
-    
-    base_dir = get_project_root() / "data" / "audio_chat_message"
-    dated_dir = build_dated_dir(base_dir)
-    
-    # Target path resolution and path traversal check
-    target_file_path = (dated_dir / secure_name).resolve()
-    
-    # Path traversal protection
-    if not str(target_file_path).startswith(str(base_dir.resolve())):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Path traversal attempt detected."
-        )
-        
-    ensure_dir(dated_dir)
-    
-    with open(target_file_path, "wb") as f:
-        f.write(audio_bytes)
-        
-    rel_path = target_file_path.relative_to(get_project_root())
-    relative_path_str = rel_path.as_posix()
-    
-    return {
-        "relative_path": relative_path_str,
-        "url": path_to_url(relative_path_str)
-    }
-
-def save_paper_pdf_bytes(file_bytes: bytes, original_filename: str | None = None) -> dict:
+def save_paper_pdf_bytes(file_bytes: bytes, original_filename: Optional[str] = None) -> dict:
     """
     Generate a secure UUID filename, validate extension is .pdf,
     protect against path traversal, save bytes to data/paper_pdf/yyyy/mm/dd/ and return

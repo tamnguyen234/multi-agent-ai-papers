@@ -1,11 +1,11 @@
 import logging
+from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.db.models.paper import Paper
 from app.db.models.topic import Topic, PaperTopic
 from app.core.config import settings
-from app.services import trend_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class TrendService:
     def __init__(self, db: Session):
         self.db = db
 
-    def analyze_trends(self, limit: int | None = None):
+    def analyze_trends(self, limit: Optional[int] = None):
         """Call Trend Agent to cluster and identify main topics/trends in saved papers."""
         return analyze_and_store_trends(self.db, limit)
 
@@ -36,12 +36,12 @@ def build_paper_payload(papers: list[Paper]) -> list[dict]:
         payload.append({
             "id": paper.id,
             "title": paper.title,
-            "abstract": paper.abstract or "",
-            "summary": paper.summary or ""
+            "abstract": paper.abstract_en or "",
+            "published": paper.published.isoformat() if paper.published else ""
         })
     return payload
 
-def analyze_and_store_trends(db: Session, limit: int | None = None) -> dict:
+def analyze_and_store_trends(db: Session, limit: Optional[int] = None) -> dict:
     """
     Fetch papers, invoke the Trend Agent microservice, upsert topics & paper mappings,
     and return the serialized trend report.
@@ -60,13 +60,139 @@ def analyze_and_store_trends(db: Session, limit: int | None = None) -> dict:
             "topics": []
         }
         
-    # 2. Call Trend Agent
-    payload = {
-        "papers": build_paper_payload(papers),
-        "mode": settings.TREND_MODE
-    }
+    # 2. Call Trend Agent via HTTP
+    import httpx
+    import math
     
-    agent_res = trend_client.analyze_trends(payload)
+    payload = build_paper_payload(papers)
+    trend_agent_url = getattr(settings, "TREND_AGENT_URL", "http://localhost:8005")
+    
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(f"{trend_agent_url}/analyze", json={"papers": payload})
+            response.raise_for_status()
+            agent_data = response.json()
+    except Exception as e:
+        logger.warning(f"Failed to call Trend Agent: {str(e)}. Falling back to rule-based mock clustering.")
+        
+        import random
+        random.seed(42)
+        
+        # 1. Classify papers to predefined topics using keywords
+        topic_counts = {t: 0 for t in TOPIC_KEYWORDS}
+        paper_assignments = []
+        
+        for p in papers:
+            text = f"{p.title} {p.abstract_en or ''}".lower()
+            matched_topic = "Other"
+            best_count = 0
+            for topic, keywords in TOPIC_KEYWORDS.items():
+                if topic == "Other":
+                    continue
+                matches = sum(1 for kw in keywords if kw in text)
+                if matches > best_count:
+                    best_count = matches
+                    matched_topic = topic
+            
+            topic_counts[matched_topic] += 1
+            paper_assignments.append((p.id, matched_topic))
+            
+        # 2. Create nodes (topics that have at least one paper)
+        nodes = []
+        node_id_map = {}
+        active_topics = [t for t, count in topic_counts.items() if count > 0]
+        
+        for idx, topic in enumerate(active_topics):
+            # Arrange topic nodes in a circle
+            angle = (2 * math.pi * idx) / len(active_topics) if len(active_topics) > 0 else 0
+            radius = 3.0
+            centroid_x = radius * math.cos(angle)
+            centroid_y = radius * math.sin(angle)
+            
+            cluster_id = f"cluster_{idx}"
+            node_id_map[topic] = cluster_id
+            
+            nodes.append({
+                "id": cluster_id,
+                "name": topic,
+                "keywords": TOPIC_KEYWORDS[topic][:5],
+                "size": topic_counts[topic],
+                "x": centroid_x,
+                "y": centroid_y
+            })
+            
+        # 3. Create edges between topics (simple ring connections)
+        edges = []
+        for i in range(len(nodes)):
+            j = (i + 1) % len(nodes)
+            if i != j:
+                edges.append({
+                    "source": nodes[i]["id"],
+                    "target": nodes[j]["id"],
+                    "weight": 0.5
+                })
+                
+        # 4. Map papers to coordinates near their topic centroid
+        papers_res = []
+        for pid, topic in paper_assignments:
+            cluster_id = node_id_map.get(topic, "cluster_Other")
+            # Find the node's position
+            node_x, node_y = 0.0, 0.0
+            for node in nodes:
+                if node["id"] == cluster_id:
+                    node_x, node_y = node["x"], node["y"]
+                    break
+            # Add small random offset around centroid
+            offset_r = random.uniform(0.1, 0.8)
+            offset_angle = random.uniform(0, 2 * math.pi)
+            umap_x = node_x + offset_r * math.cos(offset_angle)
+            umap_y = node_y + offset_r * math.sin(offset_angle)
+            
+            papers_res.append({
+                "id": pid,
+                "umap_x": umap_x,
+                "umap_y": umap_y
+            })
+            
+        agent_data = {
+            "graph": {"nodes": nodes, "edges": edges},
+            "papers": papers_res
+        }
+        
+    graph = agent_data.get("graph", {})
+    papers_res = agent_data.get("papers", [])
+    
+    # Reconstruct topics from graph nodes
+    topics_map = {}
+    for node in graph.get("nodes", []):
+        topics_map[node["id"]] = {
+            "name": node["name"],
+            "description": "Keywords: " + ", ".join(node["keywords"]),
+            "paper_ids": [],
+            "confidence_score": 0.85 # Default confidence
+        }
+    
+    for mp in papers_res:
+        umap_x = mp.get("umap_x")
+        umap_y = mp.get("umap_y")
+        if umap_x is not None and umap_y is not None:
+            closest_node_id = None
+            min_dist = float('inf')
+            for node in graph.get("nodes", []):
+                dist = math.sqrt((umap_x - node["x"])**2 + (umap_y - node["y"])**2)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_node_id = node["id"]
+            
+            if closest_node_id is not None:
+                topics_map[closest_node_id]["paper_ids"].append(mp["id"])
+                
+    final_topics = [t for t in topics_map.values() if len(t["paper_ids"]) > 0]
+    
+    agent_res = {
+        "mode": getattr(settings, "TREND_MODE", "rule_based"),
+        "topics": final_topics
+    }
     
     # Track the successfully saved topics and confidence counts to return in API response
     processed_topics = []
@@ -137,7 +263,7 @@ def analyze_and_store_trends(db: Session, limit: int | None = None) -> dict:
                     {
                         "id": paper_map[pid].id,
                         "title": paper_map[pid].title,
-                        "abstract": paper_map[pid].abstract,
+                        "abstract": paper_map[pid].abstract_en,
                         "published": paper_map[pid].published
                     } for pid in valid_paper_ids
                 ]

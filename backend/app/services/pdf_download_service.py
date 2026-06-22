@@ -10,9 +10,9 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-def extract_arxiv_id(arxiv_id: str) -> str:
+def extract_external_id(external_id: str) -> str:
     """
-    Extract and normalize the arxiv_id from various formats.
+    Extract and normalize the external_id from various formats.
     Examples:
       - "2401.12345" -> "2401.12345"
       - "2401.12345v2" -> "2401.12345v2"
@@ -21,7 +21,7 @@ def extract_arxiv_id(arxiv_id: str) -> str:
       - "https://arxiv.org/pdf/2401.12345.pdf" -> "2401.12345"
       - "cs/9901001" -> "cs/9901001"
     """
-    val = arxiv_id.strip()
+    val = external_id.strip()
     
     # Check if it is a full URL
     if val.startswith("http://") or val.startswith("https://"):
@@ -35,19 +35,19 @@ def extract_arxiv_id(arxiv_id: str) -> str:
         
     return val
 
-def build_arxiv_pdf_url(arxiv_id: str) -> str:
+def build_arxiv_pdf_url(external_id: str) -> str:
     """
-    If arxiv_id looks like a full URL already, return it directly.
-    Otherwise extract the normalized arxiv_id and build the arxiv PDF link.
+    If external_id looks like a full URL already, return it directly.
+    Otherwise extract the normalized external_id and build the arxiv PDF link.
     """
-    val = arxiv_id.strip()
+    val = external_id.strip()
     if val.startswith("http://") or val.startswith("https://"):
         if val.lower().endswith(".pdf"):
             return val
-        extracted = extract_arxiv_id(val)
+        extracted = extract_external_id(val)
         return f"https://arxiv.org/pdf/{extracted}.pdf"
         
-    extracted = extract_arxiv_id(val)
+    extracted = extract_external_id(val)
     return f"https://arxiv.org/pdf/{extracted}.pdf"
 
 def download_pdf_bytes(pdf_url: str) -> bytes:
@@ -76,7 +76,6 @@ def download_pdf_bytes(pdf_url: str) -> bytes:
                 except ValueError as ve:
                     if "exceeds limit" in str(ve):
                         raise ve
-                    pass
             
             file_bytes = response.content
             
@@ -85,7 +84,7 @@ def download_pdf_bytes(pdf_url: str) -> bytes:
                 raise ValueError(f"PDF file size ({len(file_bytes)} bytes) exceeds limit of {settings.MAX_PDF_SIZE_MB} MB")
                 
             # Validate content-type or magic header starts with %PDF
-            content_type = response.headers.get("Content-Type", "").lower()
+            response.headers.get("Content-Type", "").lower()
             
             # Starts with b"%PDF" (validate first 4 bytes)
             if not file_bytes.startswith(b"%PDF"):
@@ -120,17 +119,17 @@ def download_and_attach_pdf(db: Session, paper_id: int) -> dict:
                 "mode": "existing",
                 "pdf_path": paper.pdf_path,
                 "pdf_url": paper.pdf_url,
-                "source_pdf_url": build_arxiv_pdf_url(paper.arxiv_id) if paper.arxiv_id else None,
+                "source_pdf_url": build_arxiv_pdf_url(paper.external_id) if paper.external_id else None,
                 "size_bytes": size_bytes
             }
             
-    if not paper.arxiv_id or not paper.arxiv_id.strip():
+    if not paper.external_id or not paper.external_id.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Paper does not have a valid arxiv_id for PDF download."
+            detail="Paper does not have a valid external_id for PDF download."
         )
         
-    source_pdf_url = build_arxiv_pdf_url(paper.arxiv_id)
+    source_pdf_url = build_arxiv_pdf_url(paper.external_id)
     
     logger.info(f"Downloading PDF from {source_pdf_url} for paper ID {paper.id}")
     try:
@@ -148,7 +147,7 @@ def download_and_attach_pdf(db: Session, paper_id: int) -> dict:
         
     # Save the file using storage service
     try:
-        filename = f"{extract_arxiv_id(paper.arxiv_id)}.pdf"
+        filename = f"{extract_external_id(paper.external_id)}.pdf"
         saved_file_info = storage_service.save_paper_pdf_bytes(pdf_bytes, original_filename=filename)
     except Exception as se:
         raise HTTPException(

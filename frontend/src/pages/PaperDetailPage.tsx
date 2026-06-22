@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getPaperById, generateAudioAbstract, translatePaperField, synthesizeCustomText } from '../api/paperApi';
+import { getPaperById, generateAudioAbstract } from '../api/paperApi';
 import { getApiErrorMessage } from '../utils/apiError';
 import type { Paper } from '../types/paper';
 import AudioPlayer from '../components/AudioPlayer';
-import { formatAuthors, formatDate } from '../utils/formatters';
-import { buildMediaUrl, arxivAbsUrl, hfPaperUrl } from '../utils/mediaUrl';
+import { formatAuthors, formatDate, formatScore } from '../utils/formatters';
+import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
@@ -20,49 +20,6 @@ export const PaperDetailPage: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
   const [generatingAudio, setGeneratingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
-
-  // Translation state
-  const [translatedAbstract, setTranslatedAbstract] = useState<string | null>(null);
-  const [translatingAbstract, setTranslatingAbstract] = useState<boolean>(false);
-  const [translateAbstractError, setTranslateAbstractError] = useState<string | null>(null);
-
-  // Audio for translation state
-
-  const [abstractTtsUrl, setAbstractTtsUrl] = useState<string | null>(null);
-  const [generatingAbstractTts, setGeneratingAbstractTts] = useState<boolean>(false);
-  const [abstractTtsError, setAbstractTtsError] = useState<string | null>(null);
-  const [abstractTtsDuration, setAbstractTtsDuration] = useState<number | null>(null);
-
-  const handleTranslateAbstract = async () => {
-    if (!paper) return;
-    setTranslatingAbstract(true);
-    setTranslateAbstractError(null);
-    try {
-      const res = await translatePaperField(paper.id, 'abstract');
-      setTranslatedAbstract(res.translated_text);
-    } catch (err: unknown) {
-      const msg = getApiErrorMessage(err, 'Không thể dịch abstract.');
-      setTranslateAbstractError(msg);
-    } finally {
-      setTranslatingAbstract(false);
-    }
-  };
-
-  const handleTtsTranslatedAbstract = async () => {
-    if (!translatedAbstract) return;
-    setGeneratingAbstractTts(true);
-    setAbstractTtsError(null);
-    try {
-      const res = await synthesizeCustomText(translatedAbstract, 'vi_female');
-      setAbstractTtsUrl(res.audio_url);
-      setAbstractTtsDuration(res.duration_seconds);
-    } catch (err: unknown) {
-      const msg = getApiErrorMessage(err, 'Không thể tạo giọng đọc cho abstract.');
-      setAbstractTtsError(msg);
-    } finally {
-      setGeneratingAbstractTts(false);
-    }
-  };
 
 
   useEffect(() => {
@@ -79,16 +36,7 @@ export const PaperDetailPage: React.FC = () => {
       setNotFound(false);
       try {
         const data = await getPaperById(paperId);
-        if (!cancelled) {
-          setPaper(data);
-          // Pre-populate translation from DB if already exists
-          if (data.abstract_vi) setTranslatedAbstract(data.abstract_vi);
-          // Pre-populate TTS URL if paper already has pre-generated audio
-          if (data.audio_abstract_url) {
-            setAbstractTtsUrl(data.audio_abstract_url);
-            setAbstractTtsDuration(data.audio_duration_seconds);
-          }
-        }
+        if (!cancelled) setPaper(data);
       } catch (err: unknown) {
         if (cancelled) return;
         const status =
@@ -170,10 +118,10 @@ export const PaperDetailPage: React.FC = () => {
 
   const pdfUrl = buildMediaUrl(paper.pdf_url || paper.pdf_path);
   const audioUrl = buildMediaUrl(paper.audio_abstract_url || paper.audio_abstract_path);
-  const arxivUrl = arxivAbsUrl(paper.arxiv_id);
-  const hfUrl = hfPaperUrl(paper.arxiv_id);
+  const sourceUrl = paper.source_url || externalAbsUrl(paper.external_id);
   const authorsStr = formatAuthors(paper.authors);
   const dateStr = formatDate(paper.published);
+  const scoreLabel = formatScore(paper.score);
 
   return (
     <div className="detail-page">
@@ -192,7 +140,7 @@ export const PaperDetailPage: React.FC = () => {
       <div className="detail-header">
         <h1 className="detail-title">{paper.title}</h1>
         <div className="detail-header__chips">
-          <span className="score-chip">👍 {paper.upvotes}</span>
+          <span className="score-chip">⭐ {scoreLabel}</span>
           {pdfUrl && <span className="badge badge--pdf">📄 PDF</span>}
           {(audioUrl || paper.has_audio) && (
             <span className="badge badge--audio">🎙️ Audio</span>
@@ -203,16 +151,18 @@ export const PaperDetailPage: React.FC = () => {
       {/* Metadata row */}
       <div className="detail-meta">
         <div className="detail-meta__item">
-          <span className="detail-meta__label">Mã ID bài báo</span>
-          <span className="detail-meta__value">{paper.arxiv_id}</span>
+          <span className="detail-meta__label">ID Nguồn</span>
+          <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="detail-meta__link">
+            {paper.external_id} ↗
+          </a>
         </div>
         <div className="detail-meta__item">
           <span className="detail-meta__label">Ngày đăng</span>
           <span className="detail-meta__value">{dateStr}</span>
         </div>
         <div className="detail-meta__item">
-          <span className="detail-meta__label">Số lượt upvote</span>
-          <span className="detail-meta__value">{paper.upvotes}</span>
+          <span className="detail-meta__label">Điểm xu hướng</span>
+          <span className="detail-meta__value">{scoreLabel}</span>
         </div>
       </div>
 
@@ -225,69 +175,23 @@ export const PaperDetailPage: React.FC = () => {
       )}
 
 
-      {/* Abstract */}
+      {/* Abstract (EN) */}
       <section className="detail-section">
-        <h2 className="detail-section__title">📋 Abstract</h2>
-        <div className="detail-text-block">
-          {paper.abstract}
-        </div>
-        
-        <div style={{ marginTop: '12px' }}>
-          {!translatedAbstract && !translatingAbstract && (
-            <button 
-              className="btn-detail-action" 
-              style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}
-              onClick={handleTranslateAbstract}
-            >
-              🤗 Dịch Abstract sang tiếng Việt (VinAI)
-            </button>
-          )}
-          
-          {translatingAbstract && (
-            <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="spinner-mini">⏳</span> Đang dịch bằng model VinAI...
-            </div>
-          )}
-          
-          {translateAbstractError && (
-            <p style={{ color: '#dc2626', fontSize: '13px' }}>⚠️ Lỗi: {translateAbstractError}</p>
-          )}
-          
-          {translatedAbstract && (
-            <div className="detail-text-block" style={{ marginTop: '12px', borderLeft: '3px solid #10b981', background: '#f0fdf4' }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#047857' }}>🇻🇳 Bản dịch tiếng Việt:</h4>
-              <p style={{ margin: '0 0 12px 0' }}>{translatedAbstract}</p>
-              
-              {abstractTtsUrl ? (
-                <AudioPlayer
-                  src={buildMediaUrl(abstractTtsUrl) || ''}
-                  title="Nghe Abstract tiếng Việt"
-                  durationSeconds={abstractTtsDuration}
-                />
-              ) : (
-                <div>
-                  {generatingAbstractTts ? (
-                    <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="spinner-mini">⏳</span> Đang chuyển thành giọng đọc VieNeu...
-                    </div>
-                  ) : (
-                    <button 
-                      className="btn-detail-action"
-                      style={{ background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }}
-                      onClick={handleTtsTranslatedAbstract}
-                    >
-                      🎙️ Nghe đọc bản dịch (VieNeu)
-                    </button>
-                  )}
-                  {abstractTtsError && (
-                    <p style={{ color: '#dc2626', fontSize: '13px' }}>⚠️ Lỗi: {abstractTtsError}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+        <h2 className="detail-section__title">📋 Abstract (EN)</h2>
+        <div className="detail-section__content">
+          {paper.abstract_en}
         </div>
       </section>
+
+      {/* Translated Abstract */}
+      {paper.abstract_vi && (
+        <section className="detail-section">
+          <h2 className="detail-section__title">📝 Tóm tắt (VI)</h2>
+          <div className="detail-section__content">
+            {paper.abstract_vi}
+          </div>
+        </section>
+      )}
 
       {/* Audio abstract */}
       <section className="detail-section">
@@ -358,35 +262,13 @@ export const PaperDetailPage: React.FC = () => {
           💬 Hỏi đáp với bài báo này
         </Link>
         <a
-          href={hfUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-detail-action btn-detail-action--hf"
-          style={{
-            background: '#fef3c7',
-            color: '#d97706',
-            borderColor: '#fde68a',
-            padding: '10px 18px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            border: '1px solid #fde68a',
-            fontWeight: 500
-          }}
-          id={`detail-hf-${paper.id}`}
-        >
-          🤗 Xem trên HuggingFace
-        </a>
-        <a
-          href={arxivUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-detail-action btn-detail-action--arxiv"
-          id={`detail-arxiv-${paper.id}`}
+          id={`detail-source-${paper.id}`}
         >
-          🔗 Xem trên arXiv
+          🔗 Xem nguồn gốc
         </a>
         <button
           className="btn-detail-action btn-detail-action--back"

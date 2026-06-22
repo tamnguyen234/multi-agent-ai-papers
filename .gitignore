@@ -62,6 +62,9 @@ _cleanup_trash/
 /data/faiss_indexes/**
 !/data/faiss_indexes/.gitkeep
 
+/data/indices_v2/**
+!/data/indices_v2/.gitkeep
+
 /data/logs/**
 !/data/logs/.gitkeep
 
@@ -99,4 +102,3 @@ backend/alembic/versions/__pycache__/
 
 # Ollama Portable
 Ollama/
-

@@ -30,33 +30,26 @@ export function formatDuration(seconds: number | null | undefined): string {
 }
 
 /**
- * Format a score (0–1 float) to a percentage-like string, e.g. "87.3"
+ * Format a score (0–N float/integer) to a percentage-like string or count.
+ * Handles scores > 1 as raw upvote counts, formatting integers as integers and floats with decimals.
  */
-export function formatScore(score: number): string {
+export function formatScore(score: number | null | undefined): string {
+  if (score == null) return '—';
+  if (score > 1) {
+    return Number.isInteger(score) ? score.toString() : score.toFixed(1);
+  }
   return (score * 100).toFixed(1);
 }
 
 /**
- * Extract arXiv short ID from full arxiv_id (e.g. "2406.12345v1" → "2406.12345")
+ * Build URL from external_id
  * If the input is already a full http/https URL, return it directly (with version tag stripped if applicable).
  */
-export function arxivAbsUrl(arxiv_id: string): string {
-  if (arxiv_id.startsWith('http://') || arxiv_id.startsWith('https://')) {
-    return arxiv_id.replace(/v\d+$/, '');
+export function externalAbsUrl(external_id: string): string {
+  if (external_id.startsWith('http://') || external_id.startsWith('https://')) {
+    return external_id.replace(/v\d+$/, '');
   }
-  const clean = arxiv_id.replace(/v\d+$/, '');
-  return `https://arxiv.org/abs/${clean}`;
-}
-
-/**
- * Extract Hugging Face Daily Paper URL from arxiv_id.
- */
-export function hfPaperUrl(arxiv_id: string): string {
-  if (arxiv_id.startsWith('http://') || arxiv_id.startsWith('https://')) {
-    const clean_id = arxiv_id.split('/abs/').pop()?.split('/pdf/').pop()?.replace(/v\d+$/, '') || '';
-    return `https://huggingface.co/papers/${clean_id}`;
-  }
-  const clean = arxiv_id.replace(/v\d+$/, '');
+  const clean = external_id.replace(/v\d+$/, '');
+  // Default to huggingface if no URL protocol was matched
   return `https://huggingface.co/papers/${clean}`;
 }
-

@@ -1,6 +1,6 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from app.jobs.daily_digest_job import run_daily_digest_job
+from app.jobs.daily_paper_job import run_daily_paper_pipeline_job
 from app.core.config import settings
 import logging
 import pytz
@@ -26,7 +26,8 @@ def start_scheduler():
         
     try:
         # Resolve timezone
-        tz = pytz.timezone(settings.SCHEDULER_TIMEZONE)
+        timezone_str = settings.SCHEDULER_TIMEZONE or getattr(settings, "TIMEZONE", "Asia/Bangkok")
+        tz = pytz.timezone(timezone_str)
         
         # Initialize BackgroundScheduler
         scheduler = BackgroundScheduler(timezone=tz)
@@ -40,17 +41,19 @@ def start_scheduler():
         
         # Add the job
         scheduler.add_job(
-            run_daily_digest_job,
+            run_daily_paper_pipeline_job,
             trigger=trigger,
-            id="daily_digest_job",
+            id="daily_paper_pipeline_job",
             replace_existing=True
         )
         
         scheduler.start()
-        logger.info(
-            f"Scheduler successfully started in timezone '{settings.SCHEDULER_TIMEZONE}'. "
+        msg = (
+            f"Scheduler successfully started in timezone '{timezone_str}'. "
             f"Daily digest job scheduled at {settings.DAILY_DIGEST_HOUR:02d}:{settings.DAILY_DIGEST_MINUTE:02d} daily."
         )
+        logger.info(msg)
+        print(f"[SCHEDULER] {msg}")
     except Exception as e:
         logger.error(f"Failed to start scheduler: {str(e)}")
         scheduler = None

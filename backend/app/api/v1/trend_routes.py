@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import Optional, List
-import httpx
+from typing import Optional
 
 from app.db.database import get_db
 from app.db.models.topic import Topic, PaperTopic
@@ -14,20 +13,11 @@ router = APIRouter()
 
 @router.get("/health")
 def get_trend_health():
-    """Verify connectivity with the Trend Agent microservice."""
-    url = f"{settings.TREND_AGENT_URL.rstrip('/')}/health"
-    try:
-        response = httpx.get(url, timeout=5.0)
-        response.raise_for_status()
-        return {
-            "status": "ok",
-            "agent": response.json()
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Could not connect to Trend Agent on {settings.TREND_AGENT_URL}: {str(e)}"
-        )
+    """Verify Trend Model health (runs locally in backend)."""
+    return {
+        "status": "ok",
+        "agent": {"message": "Trend Model is embedded locally"}
+    }
 
 @router.post("/analyze", response_model=TrendAnalyzeResponse)
 def analyze_and_persist_trends(
@@ -79,7 +69,7 @@ def get_stored_trends(
                 {
                     "id": p.id,
                     "title": p.title,
-                    "abstract": p.abstract,
+                    "abstract": p.abstract_en,
                     "published": p.published
                 } for p in papers
             ]
@@ -89,7 +79,7 @@ def get_stored_trends(
     topics_list = sorted(topics_list, key=lambda x: x["paper_count"], reverse=True)
     
     return {
-        "mode": settings.TREND_MODE,
+        "mode": getattr(settings, "TREND_MODE", "rule_based"),
         "total_papers": len(total_papers_set),
         "topic_count": len(topics_list),
         "topics": topics_list

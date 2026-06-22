@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, Any, List
+from typing import Any, List
 
 class ChatSessionCreate(BaseModel):
     paper_id: int
@@ -23,9 +23,7 @@ class ChatMessageResponse(BaseModel):
     session_id: int
     role: str
     content: str
-    tts_path: Optional[str] = None
-    tts_url: Optional[str] = None
-    tts_timestamps: Optional[Any] = None
+
     created_at: datetime
 
     class Config:

@@ -18,10 +18,8 @@ export const DashboardPage: React.FC = () => {
   const [digestLoading, setDigestLoading] = useState<boolean>(true);
   const [digestError, setDigestError] = useState<string | null>(null);
 
-  // Background job polling state
+  // Run job state
   const [isRunningJob, setIsRunningJob] = useState<boolean>(false);
-  const [jobRunningInBackground, setJobRunningInBackground] = useState<boolean>(false);
-  const pollIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchDigest = useCallback(async () => {
     setDigestLoading(true);
@@ -41,53 +39,15 @@ export const DashboardPage: React.FC = () => {
     fetchDigest();
   }, [fetchDigest]);
 
-  const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
-
-  // Auto-refresh digest every 30s when job is running in background (max 5 min)
-  const startPolling = () => {
-    let attempts = 0;
-    const MAX_ATTEMPTS = 10; // 10 × 30s = 5 minutes
-    stopPolling();
-    pollIntervalRef.current = setInterval(async () => {
-      attempts++;
-      try {
-        const data = await getTodayDigest();
-        setDigest(data);
-        if (data && data.papers.length > 0) {
-          stopPolling();
-          setJobRunningInBackground(false);
-          showToast('✅ Đã tải xong bài báo mới từ HuggingFace!', 'success');
-        }
-      } catch {
-        // digest not ready yet, keep polling
-      }
-      if (attempts >= MAX_ATTEMPTS) {
-        stopPolling();
-        setJobRunningInBackground(false);
-        showToast('⏱️ Job đang chạy, hãy nhấn "Làm mới" để kiểm tra kết quả.', 'info');
-      }
-    }, 30000);
-  };
-
-  // Cleanup on unmount
-  React.useEffect(() => () => stopPolling(), []);
-
   const handleRunDigestJob = async () => {
-    if (isRunningJob || jobRunningInBackground) return;
+    if (isRunningJob) return;
     setIsRunningJob(true);
-    showToast('🚀 Đang khởi động Digest Job...', 'info');
+    showToast('Bắt đầu tải bài báo mới từ Hugging Face...', 'info');
     try {
       const res = await runDailyDigestJob();
-      if (res.status === 'started') {
-        showToast('⏳ ' + res.message, 'info');
-        setJobRunningInBackground(true);
-        startPolling();
-      }
+      showToast(res.message || `Hoàn thành! Tạo ${res.total_papers ?? '?'} bài báo mới.`, 'success');
+      // Refresh digest after job
+      await fetchDigest();
     } catch (err: unknown) {
       const msg = getApiErrorMessage(err, 'Chạy Digest Job thất bại.');
       showToast(msg, 'error');
@@ -95,7 +55,6 @@ export const DashboardPage: React.FC = () => {
       setIsRunningJob(false);
     }
   };
-
 
   const today = new Date().toLocaleDateString('vi-VN', {
     weekday: 'long',
@@ -110,20 +69,20 @@ export const DashboardPage: React.FC = () => {
       <section className="welcome-banner">
         <div className="welcome-content">
           <h1>Xin chào, {currentUser?.full_name || currentUser?.username}! 👋</h1>
-          <p>{today} — Dưới đây là Top 5 bài báo AI hot nhất hôm nay từ HuggingFace Daily Papers.</p>
+          <p>{today} — Dưới đây là Top 5 bài báo AI hot nhất hôm nay từ Hugging Face.</p>
         </div>
         <div className="welcome-actions">
           <button
             id="btn-run-digest-job"
-            className={`btn-run-job${(isRunningJob || jobRunningInBackground) ? ' btn-run-job--loading' : ''}`}
+            className={`btn-run-job${isRunningJob ? ' btn-run-job--loading' : ''}`}
             onClick={handleRunDigestJob}
-            disabled={isRunningJob || jobRunningInBackground || digestLoading}
-            title="Kích hoạt pipeline lấy bài báo mới từ HuggingFace Daily Papers (dùng cho demo)"
+            disabled={isRunningJob || digestLoading}
+            title="Kích hoạt pipeline lấy bài báo mới từ Hugging Face (dùng cho demo)"
           >
             {isRunningJob ? (
-              <><span className="spinner-small" /> Đang khởi động…</>
-            ) : jobRunningInBackground ? (
-              <><span className="spinner-small" /> Đang xử lý nền…</>
+              <>
+                <span className="spinner-small" /> Đang chạy…
+              </>
             ) : (
               '▶ Chạy Digest Job'
             )}
@@ -166,7 +125,7 @@ export const DashboardPage: React.FC = () => {
         {!digestLoading && !digestError && (!digest || digest.papers.length === 0) && (
           <EmptyState
             title="Chưa có bản tin hôm nay"
-            message="Hệ thống chưa tải bài báo nào hôm nay. Nhấp nút dưới để chạy Digest Job và cập nhật bản tin HuggingFace mới nhất."
+            message="Hệ thống chưa tải bài báo nào hôm nay. Nhấp nút dưới để chạy Digest Job và cập nhật bản tin Hugging Face mới nhất."
             icon="📭"
             actionLabel="Chạy Digest Job"
             onAction={handleRunDigestJob}

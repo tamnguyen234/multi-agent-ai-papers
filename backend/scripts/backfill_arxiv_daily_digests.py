@@ -12,38 +12,10 @@ sys.path.append(str(backend_dir))
 # Configure output encoding to support Vietnamese characters in console
 if sys.platform == "win32":
     import io
-    try:
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", write_through=True)
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", write_through=True)
-    except Exception:
-        pass
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", write_through=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", write_through=True)
 
-import requests
-
-class HFAuthorCompat:
-    def __init__(self, name):
-        self.name = name
-
-class HFPaperCompat:
-    def __init__(self, item_dict):
-        paper_dict = item_dict.get("paper", item_dict)
-        self.entry_id = f"https://arxiv.org/abs/{paper_dict.get('id', '')}"
-        self.title = paper_dict.get("title", "").replace('\n', ' ').strip()
-        self.summary = paper_dict.get("summary", "").replace('\n', ' ').strip()
-        self.authors = [HFAuthorCompat(a.get("name", "")) for a in paper_dict.get("authors", [])]
-        
-        pub_str = paper_dict.get("publishedAt", "")
-        if pub_str:
-            try:
-                self.published = datetime.strptime(pub_str[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
-            except ValueError:
-                self.published = datetime.now(timezone.utc)
-        else:
-            self.published = datetime.now(timezone.utc)
-            
-        self.primary_category = "cs.AI"
-        self.categories = ["cs.AI"]
-        self.upvotes = paper_dict.get("upvotes", 0)
+import arxiv
 from app.db.database import SessionLocal
 from app.db.models.paper import Paper
 from app.db.models.digest import Digest, DigestPaper
@@ -51,8 +23,29 @@ from app.db.models.audio import AudioAbstract
 from app.db.models.topic import Topic, PaperTopic
 
 def generate_extractive_summary(abstract: str, max_sentences: int = 3, max_chars: int = 400) -> str:
-    """Disabled paper summarization. Returns empty string."""
-    return ""
+    if not abstract or not abstract.strip():
+        return ""
+    text = abstract.strip()
+    import re
+    sentence_endings = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<!et al\.)(?<!e\.g\.)(?<!i\.e\.)(?<=\.|\?)\s')
+    sentences = sentence_endings.split(text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    if not sentences:
+        return text[:max_chars].strip()
+    summary_sentences = []
+    current_length = 0
+    for s in sentences:
+        if len(summary_sentences) >= max_sentences:
+            break
+        potential_len = current_length + len(s) + (1 if summary_sentences else 0)
+        if potential_len <= max_chars:
+            summary_sentences.append(s)
+            current_length = potential_len
+        else:
+            if not summary_sentences:
+                summary_sentences.append(s[:max_chars - 4].strip() + "...")
+            break
+    return " ".join(summary_sentences)
 
 def calculate_paper_score(title: str, abstract: str, primary_cat: str, categories: list, published_dt, target_date) -> float:
     CATEGORY_WEIGHTS = {
@@ -84,27 +77,31 @@ def calculate_paper_score(title: str, abstract: str, primary_cat: str, categorie
     return round(min(0.99, max(0.10, final_score)), 2)
 
 def get_papers_for_date(target_date: date, used_ids: set, sleep_seconds: float, global_pool: list) -> list:
-    date_str = target_date.strftime("%Y-%m-%d")
-    print(f"  [HuggingFace] Querying Daily Papers for date {date_str}...")
+    date_str = target_date.strftime("%Y%m%d")
+    query_str = f"(cat:cs.AI OR cat:cs.CL OR cat:cs.LG OR cat:cs.CV OR cat:cs.RO OR cat:stat.ML) AND submittedDate:[{date_str}0000 TO {date_str}2359]"
+    print(f"  [arXiv] Querying range for date {target_date}: {query_str}")
+    
+    client = arxiv.Client()
+    search = arxiv.Search(
+        query=query_str,
+        max_results=30,
+        sort_by=arxiv.SortCriterion.SubmittedDate,
+        sort_order=arxiv.SortOrder.Descending
+    )
     
     try:
-        r = requests.get(f"https://huggingface.co/api/daily_papers?date={date_str}", timeout=15)
-        if r.status_code == 200:
-            results = r.json()
-        else:
-            print(f"  [HuggingFace] Query failed for date {date_str} with status {r.status_code}")
-            results = []
+        results = list(client.results(search))
     except Exception as e:
-        print(f"  [HuggingFace] Query failed for date {date_str}: {e}")
+        print(f"  [arXiv] Range query failed for date {target_date}: {e}")
         results = []
         
     papers = []
-    for item in results:
-        paper_dict = item.get("paper", item)
-        clean_id = paper_dict.get("id", "")
-        if not clean_id or clean_id in used_ids:
+    for r in results:
+        raw_id = r.entry_id.split('/abs/')[-1]
+        clean_id = raw_id
+        if clean_id in used_ids:
             continue
-        papers.append(HFPaperCompat(item))
+        papers.append(r)
         
     if len(papers) >= 5:
         selected_results = papers[:5]
@@ -112,7 +109,7 @@ def get_papers_for_date(target_date: date, used_ids: set, sleep_seconds: float, 
         return selected_results
         
     # Fallback to pre-fetched pool
-    print(f"  [HuggingFace] Only found {len(papers)} unique papers for date {date_str}. Falling back to pre-fetched pool...")
+    print(f"  [arXiv] Only found {len(papers)} unique papers for date {target_date}. Falling back to pre-fetched pool...")
     available_results = []
     for r in global_pool:
         raw_id = r.entry_id.split('/abs/')[-1]
@@ -123,7 +120,7 @@ def get_papers_for_date(target_date: date, used_ids: set, sleep_seconds: float, 
     # Sort remaining available results by proximity to target_date
     def distance_to_date(r):
         pub_dt = r.published
-        pub_date = pub_dt.date() if isinstance(pub_dt, datetime) else pub_dt
+        pub_date = pub_dt.date()
         return abs((pub_date - target_date).days)
         
     available_results.sort(key=distance_to_date)
@@ -134,7 +131,6 @@ def get_papers_for_date(target_date: date, used_ids: set, sleep_seconds: float, 
     
     time.sleep(sleep_seconds)
     return papers[:5]
-
 
 def main():
     parser = argparse.ArgumentParser(description="Backfill arXiv daily digests for testing.")
@@ -183,15 +179,17 @@ def main():
     used_arxiv_ids.update([p[0] for p in existing_papers])
 
     # Pre-fetch large pool
-    print("[HuggingFace] Pre-fetching a pool of recent daily papers for fallback...")
+    print("[arXiv] Pre-fetching a large pool of recent AI papers for fallback...")
+    client = arxiv.Client()
+    search = arxiv.Search(
+        query="cat:cs.AI OR cat:cs.CL OR cat:cs.LG OR cat:cs.CV OR cat:cs.RO OR cat:stat.ML",
+        max_results=300,
+        sort_by=arxiv.SortCriterion.SubmittedDate,
+        sort_order=arxiv.SortOrder.Descending
+    )
     try:
-        r = requests.get("https://huggingface.co/api/daily_papers", params={"limit": 50}, timeout=15)
-        if r.status_code == 200:
-            global_fallback_pool = [HFPaperCompat(p) for p in r.json()]
-            print(f"[HuggingFace] Pre-fetched {len(global_fallback_pool)} papers for fallback pool.")
-        else:
-            print(f"[WARNING] Pre-fetch failed with status: {r.status_code}. Will try fetching per-day.")
-            global_fallback_pool = []
+        global_fallback_pool = list(client.results(search))
+        print(f"[arXiv] Pre-fetched {len(global_fallback_pool)} papers for fallback pool.")
     except Exception as e:
         print(f"[WARNING] Pre-fetch failed: {e}. Will try fetching per-day.")
         global_fallback_pool = []
@@ -282,36 +280,16 @@ def main():
                 authors = [auth.name for auth in r.authors]
                 summary = generate_extractive_summary(r.summary)
                 
-                # Auto-translate summary and abstract to Vietnamese on ingestion
-                from app.services.tts_client import translate_text
-                summary_vi = None
-                if summary:
-                    try:
-                        summary_vi = translate_text(summary)["translated_text"]
-                    except Exception as te:
-                        print(f"    [WARNING] Failed to auto-translate summary for {clean_id}: {te}")
-                        
-                abstract_vi = None
-                if r.summary:
-                    try:
-                        abstract_vi = translate_text(r.summary)["translated_text"]
-                    except Exception as te:
-                        print(f"    [WARNING] Failed to auto-translate abstract for {clean_id}: {te}")
-
                 if not paper:
                     paper = Paper(
                         arxiv_id=clean_id,
                         title=r.title.replace('\n', ' ').strip(),
                         abstract=r.summary.replace('\n', ' ').strip(),
                         summary=summary,
-                        summary_vi=summary_vi,
-                        abstract_vi=abstract_vi,
                         authors=authors,
                         published=pub_date,
                         score=score,
-                        upvotes=r.upvotes,
                         arxiv_url=r.entry_id,
-                        source="huggingface",
                         has_audio=False
                     )
                     db.add(paper)
@@ -322,14 +300,10 @@ def main():
                     paper.title = r.title.replace('\n', ' ').strip()
                     paper.abstract = r.summary.replace('\n', ' ').strip()
                     paper.summary = summary
-                    paper.summary_vi = summary_vi
-                    paper.abstract_vi = abstract_vi
                     paper.authors = authors
                     paper.published = pub_date
                     paper.score = score
-                    paper.upvotes = r.upvotes
                     paper.arxiv_url = r.entry_id
-                    paper.source = "huggingface"
                     db.flush()
                     
                 used_arxiv_ids.add(clean_id)

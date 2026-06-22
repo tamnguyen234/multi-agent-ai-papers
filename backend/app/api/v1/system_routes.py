@@ -20,3 +20,24 @@ def get_db_health(response: Response):
             database="disconnected",
             detail="Unable to establish a connection to the MySQL database. Please verify configuration settings and state."
         )
+
+@router.get("/scheduler-status")
+def get_scheduler_status():
+    """Get status of the daily scheduler and its scheduled jobs."""
+    from app.core.scheduler import scheduler
+    if scheduler is None:
+        return {"running": False, "jobs": []}
+    
+    jobs = []
+    for job in scheduler.get_jobs():
+        jobs.append({
+            "id": job.id,
+            "next_run_time": str(job.next_run_time) if job.next_run_time else None,
+            "trigger": str(job.trigger),
+            "pending": job.pending
+        })
+    return {
+        "running": scheduler.running,
+        "jobs": jobs
+    }
+

@@ -53,13 +53,14 @@ export function formatDateTime(dtStr: string | null | undefined): string {
 }
 
 /**
- * Format a score (0–N float) as a percentage-like display, e.g. 0.873 → "87.3"
- * Supports both [0,1] and larger values (passthrough).
+ * Format a score (0–N float/integer) as a percentage-like display or count.
+ * Supports both [0,1] and larger values (raw counts).
  */
 export function formatScore(score: number | null | undefined): string {
   if (score == null) return '—';
-  // If score looks like it's already a 0-100 value, display as-is
-  if (score > 1) return score.toFixed(1);
+  if (score > 1) {
+    return Number.isInteger(score) ? score.toString() : score.toFixed(1);
+  }
   return (score * 100).toFixed(1);
 }
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Paper } from '../types/paper';
-import { formatAuthorsShort, formatDate, truncateText } from '../utils/formatters';
-import { buildMediaUrl, arxivAbsUrl, hfPaperUrl } from '../utils/mediaUrl';
+import { formatAuthorsShort, formatDate, formatScore, truncateText } from '../utils/formatters';
+import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 
 interface PaperCardProps {
   paper: Paper;
@@ -11,18 +11,18 @@ interface PaperCardProps {
 const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
   const pdfUrl = buildMediaUrl(paper.pdf_url || paper.pdf_path);
   const audioUrl = buildMediaUrl(paper.audio_abstract_url || paper.audio_abstract_path);
-  const arxivUrl = arxivAbsUrl(paper.arxiv_id);
-  const hfUrl = hfPaperUrl(paper.arxiv_id);
+  const sourceUrl = paper.source_url || externalAbsUrl(paper.external_id);
+  const scoreLabel = formatScore(paper.score);
   const authorsLabel = formatAuthorsShort(paper.authors, 3);
   const dateLabel = formatDate(paper.published);
-  const summaryText = truncateText(paper.abstract, 200);
+  const summaryText = truncateText(paper.abstract_vi || paper.abstract_en, 200);
 
   return (
     <article className="paper-card">
       {/* Header: title + badges */}
       <div className="paper-card__top">
         <div className="paper-card__badges">
-          <span className="score-chip">👍 {paper.upvotes}</span>
+          <span className="score-chip">⭐ {scoreLabel}</span>
           {pdfUrl && <span className="badge badge--pdf">📄 PDF</span>}
           {(audioUrl || paper.has_audio) && (
             <span className="badge badge--audio">🎙️ Audio</span>
@@ -36,12 +36,12 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
       {/* Meta row */}
       <div className="paper-card__meta">
         {paper.authors && paper.authors.length > 0 && (
-          <span className="meta-tag" title={`${paper.upvotes} upvotes`}>
+          <span className="meta-tag" title={formatScore(paper.score)}>
             👤 {authorsLabel}
           </span>
         )}
         <span className="meta-tag">📅 {dateLabel}</span>
-        <span className="meta-tag meta-tag--arxiv">📑 {paper.arxiv_id}</span>
+        <span className="meta-tag meta-tag--external">📑 {paper.external_id}</span>
       </div>
 
       {/* Summary / abstract snippet */}
@@ -59,36 +59,13 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
           Xem chi tiết →
         </Link>
         <a
-          href={hfUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-paper-action btn-paper-action--hf"
-          style={{ 
-            background: '#fef3c7', 
-            color: '#d97706', 
-            borderColor: '#fde68a',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            border: '1px solid #fde68a',
-            fontWeight: 500
-          }}
-          id={`paper-hf-${paper.id}`}
-        >
-          🤗 HuggingFace
-        </a>
-        <a
-          href={arxivUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-paper-action btn-paper-action--arxiv"
-          id={`paper-arxiv-${paper.id}`}
+          id={`paper-source-${paper.id}`}
         >
-          🔗 arXiv
+          🔗 Nguồn
         </a>
         {pdfUrl && (
           <a

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, Text, Date, DateTime, Boolean, Float, JSON, Integer
+from sqlalchemy import Column, BigInteger, String, Text, Date, DateTime, Boolean, Float, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from typing import Optional
@@ -8,41 +8,20 @@ class Paper(Base):
     __tablename__ = "papers"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    arxiv_id = Column(String(100), unique=True, nullable=False, index=True)
+    external_id = Column(String(100), unique=True, nullable=False, index=True)
     title = Column(Text, nullable=False)
-    abstract = Column(Text, nullable=False)
-    summary = Column(Text, nullable=True)
-    summary_vi = Column(Text, nullable=True)
+    abstract_en = Column(Text, nullable=False)
     abstract_vi = Column(Text, nullable=True)
-    authors_json = Column("authors_json", JSON, nullable=True)
+    authors = Column("authors", JSON, nullable=True)
     published = Column(Date, nullable=True, index=True)
-    arxiv_url = Column(Text, nullable=True)
-    pdf_url = Column(Text, nullable=True)
+    source_url = Column(Text, nullable=True)
     pdf_path = Column(String(500), nullable=True)
-    source = Column(String(100), nullable=False, default="arxiv", server_default="arxiv")
-    primary_category = Column(String(100), nullable=True)
-    trending_score = Column("trending_score", Float, nullable=True, index=True)
-    upvotes = Column(Integer, default=0, nullable=False)
-    score_reason_json = Column(JSON, nullable=True)
+    source = Column(String(100), nullable=False)
+    score = Column("score", Float, nullable=False, default=0, index=True)
     has_audio = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)
 
-    @property
-    def authors(self):
-        return self.authors_json
 
-    @authors.setter
-    def authors(self, value):
-        self.authors_json = value
-
-    @property
-    def score(self):
-        return self.trending_score
-
-    @score.setter
-    def score(self, value):
-        self.trending_score = value
 
 
     # Relationships

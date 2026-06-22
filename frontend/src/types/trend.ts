@@ -1,7 +1,7 @@
 export interface TrendPaper {
   id: number;
   title: string;
-  abstract: string;
+  abstract_en: string;
   published?: string | null;
 }
 

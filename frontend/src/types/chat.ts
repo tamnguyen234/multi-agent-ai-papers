@@ -15,9 +15,6 @@ export interface ChatMessage {
   session_id: number;
   role: ChatMessageRole;
   content: string;
-  tts_path: string | null;
-  tts_url: string | null;
-  tts_timestamps: unknown | null;
   created_at: string; // ISO datetime
 }
 
@@ -39,22 +36,4 @@ export interface ChatAskResponse {
   assistant_message: ChatMessage;
   qa_mode: string;
   sources: unknown[];
-}
-
-/** POST /tts/chat-message body */
-export interface TTSChatMessageRequest {
-  message_id: number;
-  voice?: string;
-  language?: string;
-  speed?: number;
-}
-
-/** POST /tts/chat-message response */
-export interface TTSChatMessageResponse {
-  message_id: number;
-  tts_path: string | null;
-  tts_url: string | null;
-  tts_timestamps: unknown | null;
-  duration_seconds: number | null;
-  mode: string; // "synthesized" | "existing" | "mock" etc.
 }

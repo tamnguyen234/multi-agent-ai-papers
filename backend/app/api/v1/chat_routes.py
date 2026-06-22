@@ -6,7 +6,6 @@ from app.db.models.user import User
 from app.db.models.paper import Paper
 from app.db.models.chat import ChatSession, ChatMessage
 from app.core.security import get_current_user
-from app.core.config import settings
 from app.services.qa_client import ask_question
 from app.schemas.chat_schema import (
     ChatSessionCreate,
@@ -17,6 +16,20 @@ from app.schemas.chat_schema import (
 )
 
 router = APIRouter()
+
+def _build_recent_qa_history(messages: List[ChatMessage], limit: int = 3) -> List[dict]:
+    """Return the last completed user/assistant exchanges in Agent2 history shape."""
+    history = []
+    pending_question = None
+
+    for message in messages:
+        if message.role == "user":
+            pending_question = message.content
+        elif message.role == "assistant" and pending_question:
+            history.append({"q": pending_question, "a": message.content})
+            pending_question = None
+
+    return history[-limit:]
 
 # --- New Route Endpoints for Task 9 ---
 
@@ -108,14 +121,17 @@ def post_chat_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Paper associated with this chat session not found."
         )
+
+    previous_messages = db.query(ChatMessage).filter(
+        ChatMessage.chat_session_id == session.id
+    ).order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc()).all()
+    qa_history = _build_recent_qa_history(previous_messages, limit=3)
         
     # 1. Create and add user message (flushed but not committed)
     user_message = ChatMessage(
         chat_session_id=session.id,
         role="user",
-        content=message_in.question,
-        tts_path=None,
-        tts_timestamps=None
+        content=message_in.question
     )
     db.add(user_message)
     
@@ -127,10 +143,11 @@ def post_chat_message(
             "paper_id": paper.id,
             "pdf_path": paper.pdf_path,
             "title": paper.title,
-            "abstract": paper.abstract,
-            "summary": paper.summary,
+            "abstract": paper.abstract_en,
+            "summary": paper.abstract_vi,
             "question": message_in.question,
-            "arxiv_id": paper.arxiv_id
+            "external_id": paper.external_id,
+            "history": qa_history
         }
         agent_res = ask_question(payload)
         
@@ -138,9 +155,7 @@ def post_chat_message(
         assistant_message = ChatMessage(
             chat_session_id=session.id,
             role="assistant",
-            content=agent_res["answer"],
-            tts_path=None,
-            tts_timestamps=None
+            content=agent_res["answer"]
         )
         db.add(assistant_message)
         db.commit()
@@ -160,7 +175,7 @@ def post_chat_message(
         "session": session,
         "user_message": user_message,
         "assistant_message": assistant_message,
-        "qa_mode": agent_res.get("mode", settings.QA_MODE),
+        "qa_mode": agent_res.get("mode", "real"),
         "sources": agent_res.get("sources", [])
     }
 
@@ -192,20 +207,5 @@ def get_session_messages(
     ).order_by(ChatMessage.created_at.asc()).all()
     
     return messages
-
-# --- Legacy/Old Router Endpoints to preserve backward compatibility ---
-
-@router.post("/{paper_id}")
-def chat_with_paper(paper_id: int, message: str, db: Session = Depends(get_db)):
-    """Interact with paper using RAG Agent."""
-    return {
-        "reply": "Mocked Q&A response",
-        "audio_url": None
-    }
-
-@router.get("/{paper_id}/history")
-def get_chat_history(paper_id: int, db: Session = Depends(get_db)):
-    """Fetch previous chat logs for a paper."""
-    return {"history": []}
 
 

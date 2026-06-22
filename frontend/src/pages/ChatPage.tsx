@@ -13,7 +13,7 @@ import type { ChatSession, ChatMessage } from '../types/chat';
 import ChatMessageBubble from '../components/chat/ChatMessageBubble';
 import ChatComposer from '../components/chat/ChatComposer';
 import { formatAuthorsShort, formatDate } from '../utils/formatters';
-import { buildMediaUrl, arxivAbsUrl, hfPaperUrl } from '../utils/mediaUrl';
+import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
@@ -23,8 +23,7 @@ import EmptyState from '../components/ui/EmptyState';
 // ───────────────────────────────────────────────────────────────
 const PaperContextPanel: React.FC<{ paper: Paper }> = ({ paper }) => {
   const pdfUrl = buildMediaUrl(paper.pdf_url || paper.pdf_path);
-  const arxivUrl = arxivAbsUrl(paper.arxiv_id);
-  const hfUrl = hfPaperUrl(paper.arxiv_id);
+  const sourceUrl = paper.source_url || externalAbsUrl(paper.external_id);
   const authorsShort = formatAuthorsShort(paper.authors, 2);
   const dateStr = formatDate(paper.published);
 
@@ -40,10 +39,10 @@ const PaperContextPanel: React.FC<{ paper: Paper }> = ({ paper }) => {
           <span className="meta-tag">👤 {authorsShort}</span>
         )}
         <span className="meta-tag">📅 {dateStr}</span>
-        <span className="meta-tag">📑 ID: {paper.arxiv_id}</span>
+        <span className="meta-tag meta-tag--external">📑 {paper.external_id}</span>
       </div>
-      {paper.abstract && (
-        <p className="chat-context-panel__summary">{paper.abstract}</p>
+      {paper.summary_vi && (
+        <p className="chat-context-panel__summary">{paper.summary_vi}</p>
       )}
       <div className="chat-context-panel__actions">
         <Link
@@ -54,23 +53,13 @@ const PaperContextPanel: React.FC<{ paper: Paper }> = ({ paper }) => {
           🔍 Xem chi tiết
         </Link>
         <a
-          href={hfUrl}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-context-action"
-          style={{ background: '#fef3c7', color: '#d97706', borderColor: '#fde68a' }}
-          id="context-hf-link"
+          id="context-source-link"
         >
-          🤗 HuggingFace
-        </a>
-        <a
-          href={arxivUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-context-action"
-          id="context-arxiv-link"
-        >
-          🔗 arXiv
+          🔗 Nguồn
         </a>
         {pdfUrl && (
           <a
@@ -189,9 +178,6 @@ export const ChatPage: React.FC = () => {
       session_id: session.id,
       role: 'user',
       content: q,
-      tts_path: null,
-      tts_url: null,
-      tts_timestamps: null,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, tempUserMsg]);
@@ -215,14 +201,6 @@ export const ChatPage: React.FC = () => {
     }
   }, [session, question, sending]);
 
-  // Update message tts_url in local state (callback for ChatMessageBubble)
-  const handleTtsUpdate = useCallback((messageId: number, ttsUrl: string) => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId ? { ...m, tts_url: ttsUrl } : m
-      )
-    );
-  }, []);
 
   // ── No paperId → guide page ──
   if (!paperId) {
@@ -287,7 +265,6 @@ export const ChatPage: React.FC = () => {
               <ChatMessageBubble
                 key={msg.id}
                 message={msg}
-                onTtsUpdate={handleTtsUpdate}
               />
             ))
           )}

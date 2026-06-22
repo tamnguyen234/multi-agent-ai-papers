@@ -69,6 +69,7 @@ def chunk_pages(pages_data: List[Dict], paper_id: int) -> List[Dict]:
     
     chunks = []
     chunk_idx = 0
+    last_heading = ""
     
     for page in pages_data:
         page_num = page["page"]
@@ -86,6 +87,13 @@ def chunk_pages(pages_data: List[Dict], paper_id: int) -> List[Dict]:
         for pc in page_chunks:
             # Restore tables in the chunk
             restored_text = pc.replace("\x00", "\n").strip()
+
+            # Agent2 behavior: keep the latest section heading on continuation chunks.
+            heading_match = re.match(r'^(#{1,6}\s+.+)', restored_text)
+            if heading_match and '**' not in heading_match.group(1):
+                last_heading = heading_match.group(1)
+            elif last_heading:
+                restored_text = last_heading + "\n\n" + restored_text
             
             if len(restored_text) < 50:
                 continue

@@ -26,7 +26,7 @@ def get_papers(
         query = query.filter(
             or_(
                 func.lower(Paper.title).like(search_term),
-                func.lower(Paper.abstract).like(search_term)
+                func.lower(Paper.abstract_en).like(search_term)
             )
         )
         
@@ -88,71 +88,4 @@ def generate_paper_audio_abstract(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error generating audio abstract: {str(e)}"
         )
-
-from pydantic import BaseModel
-
-class TranslatePaperRequest(BaseModel):
-    field: str  # "summary" or "abstract"
-
-@router.post("/{paper_id}/translate")
-def translate_paper_field(
-    paper_id: int,
-    payload: TranslatePaperRequest,
-    db: Session = Depends(get_db)
-):
-    """Translate paper summary or abstract to Vietnamese using VinAI."""
-    # 1. Fetch paper
-    paper = db.query(Paper).filter(Paper.id == paper_id).first()
-    if not paper:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Paper with ID {paper_id} not found."
-        )
-        
-    # 2. Resolve text
-    text_to_translate = ""
-    if payload.field == "summary":
-        text_to_translate = paper.summary
-    elif payload.field == "abstract":
-        text_to_translate = paper.abstract
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Field must be either 'summary' or 'abstract'."
-        )
-        
-    if not text_to_translate or not text_to_translate.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"The requested field '{payload.field}' is empty."
-        )
-        
-    # 3. Call translation client
-    from app.services.tts_client import translate_text
-    try:
-        res = translate_text(text_to_translate)
-        
-        # Persist translation to database
-        if payload.field == "summary":
-            paper.summary_vi = res["translated_text"]
-        elif payload.field == "abstract":
-            paper.abstract_vi = res["translated_text"]
-        db.commit()
-        db.refresh(paper)
-        
-        return {
-            "paper_id": paper_id,
-            "field": payload.field,
-            "original_text": text_to_translate,
-            "translated_text": res["translated_text"],
-            "mode": res.get("mode", "real"),
-            "fallback_reason": res.get("fallback_reason")
-        }
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Translation failed: {str(e)}"
-        )
-
 

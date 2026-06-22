@@ -2,11 +2,11 @@
 
 export interface DigestPaper {
   id: number;
-  arxiv_id: string;
+  external_id: string;
   title: string;
-  summary: string | null;
+  abstract_en: string;
+  abstract_vi: string | null;
   score: number;
-  upvotes: number;
   published: string | null; // ISO date string "YYYY-MM-DD"
   has_audio: boolean;
   audio_abstract_path: string | null;
@@ -26,6 +26,7 @@ export interface DigestResponse {
 }
 
 export interface RunDigestJobResponse {
-  status: string;   // "started"
   message: string;
+  digest_id?: number;
+  total_papers?: number;
 }
