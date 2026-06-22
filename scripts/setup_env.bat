@@ -93,7 +93,7 @@ echo.
 echo [3/3] Setting up virtual environments for AI Agents (%MODE_NAME%)...
 
 :: Loop helper to setup each agent
-for %%A in (qa_agent trend_agent daily_paper_audio_pipeline\tts_agent) do (
+for %%A in (qa_agent trend_agent daily_paper_audio_pipeline daily_paper_audio_pipeline\tts_agent) do (
     echo.
     echo ---------------------------------------------------
     echo Configuring agents/%%A...

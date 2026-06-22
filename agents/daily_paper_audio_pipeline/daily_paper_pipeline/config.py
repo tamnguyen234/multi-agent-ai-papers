@@ -10,13 +10,13 @@ class PipelineSettings(BaseSettings):
     hf_daily_papers_pool_limit: int = 50
 
     translate_agent_url: str = "http://localhost:8003"
-    tts_agent_url: str = "http://localhost:8003"
+    tts_agent_url: str = "http://localhost:8104"
 
     audio_abstract_dir: str = "data/audio_abstract"
     static_url_prefix: str = "/static/"
 
     http_timeout_seconds: float = Field(default=120.0, ge=1.0)
-    tts_timeout_seconds: float = Field(default=300.0, ge=1.0)
+    tts_timeout_seconds: float = Field(default=1200.0, ge=1.0)
 
 
 @lru_cache(maxsize=1)

@@ -15,11 +15,6 @@ class HFDailyPaper(BaseModel):
     score: float = 0.0
 
 
-class TranslationResult(BaseModel):
-    translated_text: str
-    mode: str | None = None
-    fallback_reason: str | None = None
-
 
 class TTSResult(BaseModel):
     audio_base64: str

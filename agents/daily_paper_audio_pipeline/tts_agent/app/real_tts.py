@@ -69,9 +69,9 @@ class RealTTSEngine:
             # Lazy import to avoid loading during fast health checks
             from vieneu import Vieneu
             
-            # Using v3turbo mode which is fast, lightweight and torch-free on CPU
-            self._tts_model = Vieneu(mode="v3turbo")
-            logger.info("VieNeu-TTS model loaded successfully.")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._tts_model = Vieneu(mode="v3turbo", device=device)
+            logger.info(f"VieNeu-TTS model loaded successfully on {device}.")
             return self._tts_model
         except Exception as e:
             self._tts_error = RuntimeError(f"VieNeu model load failed: {str(e)}")

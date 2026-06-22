@@ -4,8 +4,8 @@ A powerful, microservices-based Multi-Agent system for collecting, translating, 
 
 ## 🚀 Features
 
-- **Automated Daily Pipeline**: Fetches trending AI papers daily, translates abstracts to Vietnamese, and synthesizes audio summaries.
-- **Microservice Architecture**: Decoupled agents (Translate, TTS, Trend, QA) communicate via REST APIs, orchestrated by a central FastAPI backend.
+- **Automated Daily Pipeline**: Fetches trending AI papers daily from Hugging Face, translates abstracts to Vietnamese using NLLB-200, and synthesizes audio summaries.
+- **Microservice Architecture**: Decoupled agents (Daily Pipeline, TTS, Trend, QA) communicate via REST APIs, orchestrated by a central FastAPI backend.
 - **Trend Analysis**: Automatically clusters daily papers into emerging scientific topics using SentenceTransformers and UMAP dimensionality reduction.
 - **RAG Chat (QA Agent)**: Chat locally with your papers using Ollama and Llama 3 models.
 - **Email Digest**: Daily automated email newsletters with the top trending papers.
@@ -16,8 +16,8 @@ The project consists of 5 main components:
 
 1. **Backend API Gateway (FastAPI - Port 8000)**: Orchestrates the system, serves the frontend, handles database interactions, and runs background jobs.
 2. **Frontend (React + Vite - Port 5173)**: Beautiful, responsive UI to view papers, audio, trends, and chat.
-3. **Daily Paper Audio Pipeline (Standalone)**: A robust pipeline agent that queries Hugging Face, translates text via VinAI, and generates TTS audio.
-4. **Trend Agent (FastAPI - Port 8005)**: A lightweight microservice that processes text embeddings and applies UMAP to cluster papers into topics.
+3. **Daily Paper Audio Pipeline (Standalone)**: A robust pipeline job that queries Hugging Face, translates text via local NLLB-200 model, and generates TTS audio.
+4. **Trend Agent (FastAPI)**: A lightweight internal service that processes text embeddings and applies UMAP to cluster papers into topics.
 5. **QA Agent (Ollama)**: Local LLM integration for Retrieval-Augmented Generation.
 
 ## ⚙️ Prerequisites

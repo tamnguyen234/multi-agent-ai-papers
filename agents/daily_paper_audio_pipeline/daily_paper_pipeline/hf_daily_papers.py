@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from typing import Any
 
 import requests
@@ -7,32 +7,6 @@ import requests
 from daily_paper_pipeline.config import PipelineSettings, get_settings
 from daily_paper_pipeline.schemas import HFDailyPaper
 
-
-TRENDING_KEYWORDS = [
-    "llm",
-    "large language model",
-    "transformer",
-    "prompt",
-    "gpt",
-    "llama",
-    "deepseek",
-    "qwen",
-    "rag",
-    "retrieval",
-    "embedding",
-    "agent",
-    "multi-agent",
-    "safety",
-    "alignment",
-    "reasoning",
-    "diffusion",
-    "computer vision",
-    "speech",
-    "audio",
-    "tts",
-    "robot",
-    "robotics",
-]
 
 
 def _clean_text(value: str | None) -> str:
@@ -74,19 +48,7 @@ def _parse_hf_item(item: dict[str, Any]) -> HFDailyPaper | None:
 
 
 def _score_paper(paper: HFDailyPaper) -> float:
-    now = datetime.now(timezone.utc).date()
-    weekday = datetime.now().weekday()
-    if weekday in (5, 6):
-        return float(paper.upvotes)
-
-    age_days = (now - paper.published).days if paper.published else 0
-    recency_score = 1.0 / (1.0 + max(0, age_days))
-    category_weight = 1.0
-    text = f"{paper.title} {paper.abstract_en}".lower()
-    keyword_matches = sum(1 for keyword in TRENDING_KEYWORDS if keyword in text)
-    keyword_boost = min(0.3, keyword_matches * 0.05)
-    final_score = (recency_score * 0.4) + (category_weight * 0.3) + keyword_boost
-    return round(min(0.99, max(0.10, final_score)), 2)
+    return float(paper.upvotes)
 
 
 def rank_top_papers(papers: list[HFDailyPaper], limit: int = 5) -> list[HFDailyPaper]:
@@ -96,15 +58,7 @@ def rank_top_papers(papers: list[HFDailyPaper], limit: int = 5) -> list[HFDailyP
         scored_paper.score = _score_paper(scored_paper)
         scored.append(scored_paper)
 
-    is_weekend = datetime.now().weekday() in (5, 6)
-    if is_weekend:
-        ranked = sorted(scored, key=lambda p: (p.score, p.external_id), reverse=True)[:limit]
-    else:
-        ranked = sorted(
-            scored,
-            key=lambda p: (p.score, p.published or date.min, p.external_id),
-            reverse=True,
-        )[:limit]
+    ranked = sorted(scored, key=lambda p: (p.score, p.external_id), reverse=True)[:limit]
 
     for index, paper in enumerate(ranked, start=1):
         paper.rank_position = index
@@ -119,8 +73,15 @@ def fetch_hf_daily_papers(
     settings = settings or get_settings()
     params = {"limit": settings.hf_daily_papers_pool_limit}
     today = datetime.now().date()
-    if target_date and target_date != today:
-        params["date"] = target_date.strftime("%Y-%m-%d")
+    fetch_date = target_date or today
+    
+    if fetch_date.weekday() == 5:
+        fetch_date = fetch_date - timedelta(days=1)
+    elif fetch_date.weekday() == 6:
+        fetch_date = fetch_date - timedelta(days=2)
+
+    if fetch_date != today:
+        params["date"] = fetch_date.strftime("%Y-%m-%d")
         
     response = requests.get(
         settings.hf_daily_papers_url,

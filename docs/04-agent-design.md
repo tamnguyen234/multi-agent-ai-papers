@@ -25,6 +25,7 @@ Mỗi Agent:
 Trước đây, hệ thống có **Summarizer Agent (Port 8101)** và **Trend Agent (Port 8102)**.
 - **Summarizer Agent** đã bị **xóa bỏ** hoàn toàn khỏi dự án.
 - **Trend Agent** đã được cấu trúc lại thành một library nội bộ nằm trong `backend/app/services/trend_model/`. Nó không còn chạy như một microservice độc lập (cổng 8102) nữa, mà được gọi trực tiếp bởi Backend Gateway.
+- **Daily Paper Audio Pipeline** hiện tại đảm nhận thêm vai trò của Summarizer Agent cũ. Thay vì tóm tắt từ arXiv, pipeline này sẽ lấy các bài báo nổi bật từ Hugging Face và sử dụng **NLLB-200** để dịch sang tiếng Việt.
 
 Do đó, hiện tại hệ thống chỉ còn chạy độc lập **2 Agents**: Q&A Agent (Port 8103) và TTS Agent (Port 8104).
 
@@ -112,7 +113,7 @@ Chuyển đổi văn bản (tóm tắt bài báo / câu trả lời chat) thành
 | Biến môi trường | Mô tả | Giá trị mẫu |
 |---|---|---|
 | `TTS_MODE` | `real` hoặc `mock_fallback` | `mock_fallback` |
-| `TTS_MODEL` | Model TTS (SpeechT5/Bark/VITS) | `microsoft/speecht5_tts` |
+| `TTS_MODEL` | Model TTS (sử dụng VieNeu-TTS v3 Turbo) | `v3turbo` |
 
 ### API Endpoints nội bộ
 
@@ -127,7 +128,7 @@ Chuyển đổi văn bản (tóm tắt bài báo / câu trả lời chat) thành
 Backend POST /synthesize
   body: { text, voice, language, speed }
   ↓
-TTS Agent: transformers pipeline (SpeechT5/Bark)
+TTS Agent: VieNeu-TTS (ONNX/PyTorch)
   text → audio waveform → .wav bytes
   ↓
 Encode audio → base64 string
@@ -160,7 +161,7 @@ Trả về base64 mock audio (không cần GPU/model nặng)
 | Agent | Mode Real | Mode Fallback | Trade-off |
 |---|---|---|---|
 | Q&A | RAG + Ollama LLM | Mock answer | Real cần Ollama server + 8GB+ RAM |
-| TTS | SpeechT5/Bark | Silence placeholder | Real cần GPU hoặc CPU chậm |
+| TTS | VieNeu-TTS (v3 Turbo) | Silence placeholder | Tốc độ nhanh hơn nếu có GPU |
 
 **Khuyến nghị cho demo:** Dùng `mock_fallback` để demo nhanh, chuyển sang `real` khi có đủ phần cứng.
 

@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from daily_paper_pipeline.agent_clients import TranslateClient, TTSClient
+from daily_paper_pipeline.agent_clients import TTSClient
 from daily_paper_pipeline.config import PipelineSettings, get_settings
 from daily_paper_pipeline.db_models import AudioAbstract, Digest, DigestPaper, Paper
 from daily_paper_pipeline.hf_daily_papers import fetch_hf_daily_papers
@@ -79,8 +79,15 @@ def run_daily_summary_pipeline(
     settings = settings or get_settings()
     digest_date = digest_date or datetime.now().date()
 
-    translate_client = TranslateClient(settings)
     tts_client = TTSClient(settings)
+
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.info(f"Loading NLLB model on {device}...")
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+    tokenizer = AutoTokenizer.from_pretrained("facebook/nllb-200-distilled-600M")
+    model = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-distilled-600M").to(device)
+    logger.info("NLLB model loaded.")
 
     hf_papers = fetch_hf_daily_papers(limit=5, settings=settings, target_date=digest_date)
     if not hf_papers:
@@ -103,11 +110,14 @@ def run_daily_summary_pipeline(
             rank_position = hf_paper.rank_position or len(ranked_db_papers) + 1
             logger.info("Translating abstract_en...")
             try:
-                translation = translate_client.translate_to_vi(hf_paper.abstract_en)
-                summary_vi_text = translation.translated_text
+                inputs = tokenizer(hf_paper.abstract_en, return_tensors="pt").to(device)
+                translated_tokens = model.generate(
+                    **inputs, forced_bos_token_id=tokenizer.convert_tokens_to_ids("vie_Latn"), max_length=1024
+                )
+                summary_vi_text = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
                 logger.info("Translation complete.")
             except Exception as e:
-                logger.warning(f"Translation failed (Server down?), using fallback: {e}")
+                logger.warning(f"Translation failed, using fallback: {e}")
                 summary_vi_text = f"[Bản dịch giả lập] {hf_paper.abstract_en}"
             paper = _upsert_paper(db, hf_paper, summary_vi_text)
             ranked_db_papers.append((rank_position, paper))
@@ -123,9 +133,15 @@ def run_daily_summary_pipeline(
         audio_url = None
         if not skip_audio:
             try:
-                if not paper.abstract_vi:
-                    raise ValueError(f"Paper {paper.external_id} has no Vietnamese abstract.")
-                tts_result = tts_client.synthesize_vi(paper.abstract_vi)
+                if not paper.abstract_vi or not paper.abstract_vi.strip():
+                    raise ValueError(f"Paper {paper.external_id} has empty Vietnamese abstract.")
+                
+                tts_text = paper.abstract_vi.strip()
+                if len(tts_text) > 1950:
+                    logger.info(f"Truncating abstract_vi for TTS from {len(tts_text)} to 1950 chars.")
+                    tts_text = tts_text[:1950] + "..."
+                    
+                tts_result = tts_client.synthesize_vi(tts_text)
                 stored_audio = save_tts_audio(tts_result, project_root=project_root, settings=settings)
                 _upsert_audio_abstract(db, paper, stored_audio)
                 db.commit()

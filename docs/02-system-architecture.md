@@ -124,9 +124,9 @@ Hệ thống **AI Paper Multi-Agent System** được thiết kế theo mô hìn
 | Agent | Port | Mode chính | Fallback |
 |---|---|---|---|
 | Q&A Agent | 8103 | `real` (LangChain + Ollama) | `mock_fallback` |
-| TTS Agent | 8104 | `real` (SpeechT5/Bark) | `mock_fallback` |
+| TTS Agent | 8104 | `real` (VieNeu-TTS v3 Turbo via ONNX/PyTorch) | `mock_fallback` |
 
-*Ghi chú: Cập nhật tài liệu này chỉ tham chiếu các file markdown hợp lệ. Trend logic và Summarization logic đã được đưa thẳng vào thư mục `backend/app/services` như là các library modules nội bộ, không còn chạy độc lập ở port 8101 hay 8102 nữa.*
+*Ghi chú: Cập nhật tài liệu này chỉ tham chiếu các file markdown hợp lệ. Trend logic và Summarization logic đã được đưa thẳng vào thư mục `backend/app/services` và `agents/daily_paper_audio_pipeline`. Pipeline này dịch tự động bằng NLLB-200. Các service cũ ở port 8101 hay 8102 đã bị xóa bỏ.*
 
 Mỗi Agent có endpoint `/health` và `/` (root info).  
 Backend đọc mode từ biến môi trường (`SUMMARIZER_MODE`, `TREND_MODE`, v.v.).
@@ -153,13 +153,15 @@ Backend đọc mode từ biến môi trường (`SUMMARIZER_MODE`, `TREND_MODE`,
 
 ## 4. Luồng dữ liệu chính (Data Flows)
 
-### 4.1 Daily Digest (Scheduler)
+### 4.1 Daily Digest Pipeline
 
 ```
-APScheduler (02:00 AM)
-  → Summarizer Agent: fetch top papers from arXiv RSS + summarize
+APScheduler (Backend / Job Runner)
+  → Daily Paper Audio Pipeline: fetch top trending papers từ Hugging Face
+  → Pipeline: Dịch abstract tiếng Anh sang tiếng Việt bằng model cục bộ (NLLB-200)
   → Backend: lưu papers vào DB + tạo digest
-  → TTS Agent: sinh audio cho mỗi paper
+  → TTS Agent: sinh audio cho mỗi paper bằng VieNeu-TTS
+
   → Backend: cập nhật has_audio=True, lưu audio path
   → Email Service: gửi thông báo cho users có noti_daily=True
 ```
