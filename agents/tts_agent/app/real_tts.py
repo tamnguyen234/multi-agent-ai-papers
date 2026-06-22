@@ -44,8 +44,19 @@ class RealTTSEngine:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             
             self._translation_tokenizer = AutoTokenizer.from_pretrained(model_name, src_lang="en_XX")
-            self._translation_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-            self._translation_model.to(device)
+            try:
+                self._translation_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+                self._translation_model.to(device)
+            except RuntimeError as e:
+                if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                    logger.warning(f"GPU OOM during VinAI Translate load. Falling back to CPU...")
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    device = "cpu"
+                    self._translation_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+                    self._translation_model.to(device)
+                else:
+                    raise e
             
             logger.info(f"VinAI Translate model loaded successfully on {device}.")
             return self._translation_tokenizer, self._translation_model
@@ -70,7 +81,17 @@ class RealTTSEngine:
             from vieneu import Vieneu
             
             device = "cuda" if torch.cuda.is_available() else "cpu"
-            self._tts_model = Vieneu(mode="v3turbo", device=device)
+            try:
+                self._tts_model = Vieneu(mode="v3turbo", device=device)
+            except RuntimeError as e:
+                if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                    logger.warning(f"GPU OOM during TTS load. Falling back to CPU...")
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    device = "cpu"
+                    self._tts_model = Vieneu(mode="v3turbo", device=device)
+                else:
+                    raise e
             logger.info(f"VieNeu-TTS model loaded successfully on {device}.")
             return self._tts_model
         except Exception as e:
@@ -101,16 +122,37 @@ class RealTTSEngine:
             if not sentence:
                 continue
             logger.info(f"Translating sentence: '{sentence}'")
-            input_ids = tokenizer(sentence, return_tensors="pt").to(device)
-            output_ids = model.generate(
-                **input_ids,
-                decoder_start_token_id=tokenizer.lang_code_to_id["vi_VN"],
-                num_return_sequences=1,
-                num_beams=5,
-                early_stopping=True
-            )
-            translated = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
-            translated_sentences.append(translated)
+            try:
+                try:
+                    input_ids = tokenizer(sentence, return_tensors="pt").to(model.device)
+                    output_ids = model.generate(
+                        **input_ids,
+                        decoder_start_token_id=tokenizer.lang_code_to_id["vi_VN"],
+                        num_return_sequences=1,
+                        num_beams=5,
+                        early_stopping=True
+                    )
+                except RuntimeError as e:
+                    if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                        logger.warning(f"GPU OOM during translation. Falling back to CPU...")
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        model = model.to("cpu")
+                        input_ids = input_ids.to("cpu")
+                        output_ids = model.generate(
+                            **input_ids,
+                            decoder_start_token_id=tokenizer.lang_code_to_id["vi_VN"],
+                            num_return_sequences=1,
+                            num_beams=5,
+                            early_stopping=True
+                        )
+                    else:
+                        raise e
+                translated = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
+                translated_sentences.append(translated)
+            except Exception as e:
+                logger.error(f"Error translating sentence: {e}")
+                translated_sentences.append(sentence)
             
         vi_text = " ".join(translated_sentences)
         logger.info(f"Translation completed. Output: '{vi_text}'")
@@ -144,7 +186,23 @@ class RealTTSEngine:
             voice = "Ngọc Linh" if "Ngọc Linh" in preset_voices else (preset_voices[0] if preset_voices else None)
             
         # Synthesize audio array using the resolved voice
-        audio = tts_engine.infer(vi_text, voice=voice, emotion="natural")
+        try:
+            try:
+                audio = tts_engine.infer(vi_text, voice=voice, emotion="natural")
+            except RuntimeError as e:
+                if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                    logger.warning(f"GPU OOM during TTS inference. Falling back to CPU...")
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    from vieneu import Vieneu
+                    tts_engine = Vieneu(mode="v3turbo", device="cpu")
+                    self._tts_model = tts_engine
+                    audio = tts_engine.infer(vi_text, voice=voice, emotion="natural")
+                else:
+                    raise e
+        except Exception as e:
+            logger.error(f"Error during TTS synthesis: {e}")
+            raise e
         
         # Save to temp file and read bytes
         temp_dir = tempfile.gettempdir()

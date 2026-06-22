@@ -78,15 +78,16 @@ if "!START_OLLAMA!"=="1" (
 :: 2. Backend Gateway
 if "!START_BACKEND!"=="1" (
     echo Starting Backend Gateway on port 8000...
-    start "Backend Gateway" cmd /k "cd /d !PROJECT_ROOT!\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+    start "Backend Gateway" cmd /k "set PYTHONPATH=!PROJECT_ROOT!&& cd /d !PROJECT_ROOT!\backend && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
 )
 
 :: 3. AI Agents
 if "!START_AGENTS!"=="1" (
-    echo Starting AI Agents [Ports 8005, 8103, 8104]...
-    start "Trend Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\trend_agent && .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8005"
-    start "QA Agent" cmd /k "cd /d !PROJECT_ROOT!\agents\qa_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8103"
-    start "Daily_paper_audio_pipeline" cmd /k "cd /d !PROJECT_ROOT!\agents\daily_paper_audio_pipeline\tts_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8104"
+    echo Starting AI Agents [Ports 8005, 8103, 8104, 8105]...
+    start "Trend Agent" cmd /k "set PYTHONPATH=!PROJECT_ROOT!;!PROJECT_ROOT!\backend&& cd /d !PROJECT_ROOT!\agents\trend_agent && .venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8005"
+    start "QA Agent" cmd /k "set PYTHONPATH=!PROJECT_ROOT!;!PROJECT_ROOT!\backend&& cd /d !PROJECT_ROOT!\agents\qa_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8103"
+    start "TTS Agent" cmd /k "set PYTHONPATH=!PROJECT_ROOT!;!PROJECT_ROOT!\backend&& cd /d !PROJECT_ROOT!\agents\tts_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8104"
+    start "Daily Paper Agent" cmd /k "set PYTHONPATH=!PROJECT_ROOT!;!PROJECT_ROOT!\backend&& cd /d !PROJECT_ROOT!\agents\daily_paper_agent && .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8105"
 )
 
 :: 4. Frontend

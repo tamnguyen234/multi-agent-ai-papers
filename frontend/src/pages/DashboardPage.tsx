@@ -5,6 +5,7 @@ import { getTodayDigest, runDailyDigestJob } from '../api/digestApi';
 import { getApiErrorMessage } from '../utils/apiError';
 import type { DigestResponse } from '../types/digest';
 import PaperDigestCard from '../components/PaperDigestCard';
+import { Play, RotateCw, Calendar, Inbox } from 'lucide-react';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
@@ -68,8 +69,8 @@ export const DashboardPage: React.FC = () => {
       {/* Welcome banner */}
       <section className="welcome-banner">
         <div className="welcome-content">
-          <h1>Xin chào, {currentUser?.full_name || currentUser?.username}! 👋</h1>
-          <p>{today} — Dưới đây là Top 5 bài báo AI hot nhất hôm nay từ Hugging Face.</p>
+          <h1>Welcome, {currentUser?.full_name || currentUser?.username}</h1>
+          <p>{today} — Daily AI Papers Digest</p>
         </div>
         <div className="welcome-actions">
           <button
@@ -77,14 +78,16 @@ export const DashboardPage: React.FC = () => {
             className={`btn-run-job${isRunningJob ? ' btn-run-job--loading' : ''}`}
             onClick={handleRunDigestJob}
             disabled={isRunningJob || digestLoading}
-            title="Kích hoạt pipeline lấy bài báo mới từ Hugging Face (dùng cho demo)"
+            title="Run Daily Digest Job"
           >
             {isRunningJob ? (
               <>
-                <span className="spinner-small" /> Đang chạy…
+                <RotateCw className="spinner-small" size={16} /> Running...
               </>
             ) : (
-              '▶ Chạy Digest Job'
+              <>
+                <Play size={16} /> Run Digest Job
+              </>
             )}
           </button>
         </div>
@@ -94,20 +97,21 @@ export const DashboardPage: React.FC = () => {
       <section className="digest-section">
         <div className="digest-section__header">
           <h2 className="digest-section__title">
-            📰 Daily Top 5 AI Papers
+            Daily Top 5 AI Papers
           </h2>
           {digest && (
             <span className="digest-date-badge">
-              📅 {digest.digest_date}
+              <Calendar size={14} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'text-bottom' }} />
+              {digest.digest_date}
             </span>
           )}
           <button
             className="btn-refresh"
             onClick={fetchDigest}
             disabled={digestLoading}
-            title="Tải lại"
+            title="Refresh"
           >
-            {digestLoading ? <span className="spinner-small" /> : '↺ Làm mới'}
+            {digestLoading ? <RotateCw className="spinner-small" size={16} /> : <><RotateCw size={16} /> Refresh</>}
           </button>
         </div>
 
@@ -124,10 +128,10 @@ export const DashboardPage: React.FC = () => {
         {/* Empty state */}
         {!digestLoading && !digestError && (!digest || digest.papers.length === 0) && (
           <EmptyState
-            title="Chưa có bản tin hôm nay"
-            message="Hệ thống chưa tải bài báo nào hôm nay. Nhấp nút dưới để chạy Digest Job và cập nhật bản tin Hugging Face mới nhất."
-            icon="📭"
-            actionLabel="Chạy Digest Job"
+            title="No papers found for today"
+            message="The system has not fetched any papers today. Run the Digest Job to fetch the latest updates."
+            icon={<Inbox size={48} className="text-muted" />}
+            actionLabel="Run Digest Job"
             onAction={handleRunDigestJob}
             actionDisabled={isRunningJob}
           />

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Paper } from '../types/paper';
 import { formatAuthorsShort, formatDate, formatScore, truncateText } from '../utils/formatters';
 import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
+import { TrendingUp, FileText, Mic, Users, Calendar, Hash, ArrowRight, ExternalLink } from 'lucide-react';
 
 interface PaperCardProps {
   paper: Paper;
@@ -22,10 +23,10 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
       {/* Header: title + badges */}
       <div className="paper-card__top">
         <div className="paper-card__badges">
-          <span className="score-chip">⭐ {scoreLabel}</span>
-          {pdfUrl && <span className="badge badge--pdf">📄 PDF</span>}
+          <span className="score-chip"><TrendingUp size={14} className="mr-1" /> {scoreLabel}</span>
+          {pdfUrl && <span className="badge badge--pdf"><FileText size={14} className="mr-1" /> PDF</span>}
           {(audioUrl || paper.has_audio) && (
-            <span className="badge badge--audio">🎙️ Audio</span>
+            <span className="badge badge--audio"><Mic size={14} className="mr-1" /> Audio</span>
           )}
         </div>
         <h3 className="paper-card__title">
@@ -36,12 +37,12 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
       {/* Meta row */}
       <div className="paper-card__meta">
         {paper.authors && paper.authors.length > 0 && (
-          <span className="meta-tag" title={formatScore(paper.score)}>
-            👤 {authorsLabel}
+          <span className="meta-tag">
+            <Users size={14} className="mr-1" /> {authorsLabel}
           </span>
         )}
-        <span className="meta-tag">📅 {dateLabel}</span>
-        <span className="meta-tag meta-tag--external">📑 {paper.external_id}</span>
+        <span className="meta-tag"><Calendar size={14} className="mr-1" /> {dateLabel}</span>
+        <span className="meta-tag meta-tag--external"><Hash size={14} className="mr-1" /> {paper.external_id}</span>
       </div>
 
       {/* Summary / abstract snippet */}
@@ -53,29 +54,29 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper }) => {
       <div className="paper-card__actions">
         <Link
           to={`/papers/${paper.id}`}
-          className="btn-paper-action btn-paper-action--primary"
+          className="btn-paper-action btn-paper-action--primary flex items-center justify-center gap-1"
           id={`paper-detail-${paper.id}`}
         >
-          Xem chi tiết →
+          View Details <ArrowRight size={16} />
         </Link>
         <a
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-paper-action btn-paper-action--arxiv"
+          className="btn-paper-action btn-paper-action--arxiv flex items-center justify-center gap-1"
           id={`paper-source-${paper.id}`}
         >
-          🔗 Nguồn
+          <ExternalLink size={14} /> Source
         </a>
         {pdfUrl && (
           <a
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-paper-action btn-paper-action--pdf"
+            className="btn-paper-action btn-paper-action--pdf flex items-center justify-center gap-1"
             id={`paper-pdf-${paper.id}`}
           >
-            📄 PDF
+            <FileText size={14} /> PDF
           </a>
         )}
       </div>

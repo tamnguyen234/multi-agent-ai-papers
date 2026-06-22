@@ -17,6 +17,7 @@ import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
+import { FileText, Users, Calendar, Hash, Search, ExternalLink, MessageSquare, Bot, AlertCircle } from 'lucide-react';
 
 // ───────────────────────────────────────────────────────────────
 // Sub-component: Paper context sidebar/panel
@@ -30,46 +31,46 @@ const PaperContextPanel: React.FC<{ paper: Paper }> = ({ paper }) => {
   return (
     <aside className="chat-context-panel">
       <div className="chat-context-panel__header">
-        <span className="chat-context-panel__icon">📄</span>
-        <span className="chat-context-panel__label">Bài báo đang hỏi đáp</span>
+        <FileText size={16} className="chat-context-panel__icon" />
+        <span className="chat-context-panel__label">Active Paper Context</span>
       </div>
       <h3 className="chat-context-panel__title">{paper.title}</h3>
       <div className="chat-context-panel__meta">
         {authorsShort && authorsShort !== 'Không rõ tác giả' && (
-          <span className="meta-tag">👤 {authorsShort}</span>
+          <span className="meta-tag"><Users size={14} className="mr-1" /> {authorsShort}</span>
         )}
-        <span className="meta-tag">📅 {dateStr}</span>
-        <span className="meta-tag meta-tag--external">📑 {paper.external_id}</span>
+        <span className="meta-tag"><Calendar size={14} className="mr-1" /> {dateStr}</span>
+        <span className="meta-tag meta-tag--external"><Hash size={14} className="mr-1" /> {paper.external_id}</span>
       </div>
-      {paper.summary_vi && (
-        <p className="chat-context-panel__summary">{paper.summary_vi}</p>
+      {paper.abstract_vi && (
+        <p className="chat-context-panel__summary">{paper.abstract_vi}</p>
       )}
       <div className="chat-context-panel__actions">
         <Link
           to={`/papers/${paper.id}`}
-          className="btn-context-action"
+          className="btn-context-action flex items-center justify-center gap-2"
           id="context-paper-detail-link"
         >
-          🔍 Xem chi tiết
+          <Search size={14} /> View Details
         </Link>
         <a
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-context-action"
+          className="btn-context-action flex items-center justify-center gap-2"
           id="context-source-link"
         >
-          🔗 Nguồn
+          <ExternalLink size={14} /> Source
         </a>
         {pdfUrl && (
           <a
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-context-action"
+            className="btn-context-action flex items-center justify-center gap-2"
             id="context-pdf-link"
           >
-            📄 PDF
+            <FileText size={14} /> PDF
           </a>
         )}
       </div>
@@ -152,7 +153,7 @@ export const ChatPage: React.FC = () => {
         setMessages(history);
       } catch (err: unknown) {
         if (cancelled) return;
-        const msg = getApiErrorMessage(err, 'Không thể khởi tạo phiên hỏi đáp.');
+        const msg = getApiErrorMessage(err, 'Failed to initialize Q&A session.');
         setInitError(msg);
       } finally {
         if (!cancelled) setInitLoading(false);
@@ -194,8 +195,8 @@ export const ChatPage: React.FC = () => {
     } catch (err: unknown) {
       // Remove optimistic message on failure
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
-      const msg = getApiErrorMessage(err, 'Gửi câu hỏi thất bại.');
-      setSendError(msg);
+      const msg = getApiErrorMessage(err, 'Failed to send message.');
+        setSendError(msg);
     } finally {
       setSending(false);
     }
@@ -206,10 +207,10 @@ export const ChatPage: React.FC = () => {
   if (!paperId) {
     return (
       <EmptyState
-        title="Chọn bài báo để hỏi đáp"
-        message="Để bắt đầu hỏi đáp, hãy mở danh sách bài báo, xem chi tiết và nhấn nút 'Hỏi đáp với bài báo này'."
-        icon="💬"
-        actionLabel="📄 Xem danh sách bài báo"
+        title="Select a paper to start Q&A"
+        message="To start a Q&A session, open a paper from the list and click 'Ask Q&A Agent'."
+        icon={<MessageSquare size={48} className="text-muted" />}
+        actionLabel="View All Papers"
         onAction={() => navigate('/papers')}
       />
     );
@@ -217,17 +218,17 @@ export const ChatPage: React.FC = () => {
 
   // ── Init loading ──
   if (initLoading) {
-    return <LoadingState message="Đang khởi tạo phiên hỏi đáp…" />;
+    return <LoadingState message="Initializing Q&A session..." />;
   }
 
   // ── Init error ──
   if (initError) {
     return (
       <ErrorState
-        title="Lỗi khởi tạo"
+        title="Initialization Error"
         message={initError}
         onRetry={() => navigate('/papers')}
-        retryLabel="Quay lại danh sách"
+        retryLabel="Back to Papers"
       />
     );
   }
@@ -241,12 +242,14 @@ export const ChatPage: React.FC = () => {
       <div className="chat-workspace">
         {/* Chat header */}
         <div className="chat-workspace__header">
-          <h2 className="chat-workspace__title">💬 Hỏi đáp</h2>
+          <h2 className="chat-workspace__title flex items-center gap-2">
+            <MessageSquare size={18} /> Q&A Agent
+          </h2>
           {session && (
             <span className="chat-session-badge">Session #{session.id}</span>
           )}
           <Link to="/papers" className="btn-back" style={{ marginLeft: 'auto' }}>
-            ← Danh sách
+            ← Back to List
           </Link>
         </div>
 
@@ -254,10 +257,10 @@ export const ChatPage: React.FC = () => {
         <div className="chat-messages" id="chat-messages-container">
           {messages.length === 0 ? (
             <div className="chat-empty">
-              <span className="chat-empty__icon">🗨️</span>
-              <p>Hãy đặt câu hỏi đầu tiên về bài báo này.</p>
+              <span className="chat-empty__icon"><MessageSquare size={32} className="text-muted" /></span>
+              <p>Ask your first question about this paper.</p>
               <p className="chat-empty__hint">
-                Ví dụ: "Phương pháp chính của bài báo là gì?", "Kết quả thực nghiệm có gì đáng chú ý?"
+                Examples: "What is the main contribution of this paper?", "Can you explain the methodology?"
               </p>
             </div>
           ) : (
@@ -272,20 +275,20 @@ export const ChatPage: React.FC = () => {
           {/* Sending indicator */}
           {sending && (
             <div className="chat-bubble-row chat-bubble-row--assistant">
-              <div className="chat-avatar chat-avatar--assistant">🤖</div>
+              <div className="chat-avatar chat-avatar--assistant"><Bot size={16} /></div>
               <div className="chat-bubble chat-bubble--assistant chat-bubble--thinking">
                 <div className="chat-typing">
                   <span /><span /><span />
                 </div>
-                <span className="chat-bubble__role">Trợ lý AI đang xử lý…</span>
+                <span className="chat-bubble__role">AI is thinking...</span>
               </div>
             </div>
           )}
 
           {/* Send error */}
           {sendError && (
-            <div className="chat-send-error">
-              ❌ {sendError}
+            <div className="chat-send-error flex items-center gap-2">
+              <AlertCircle size={16} /> {sendError}
               <button
                 className="chat-send-error__dismiss"
                 onClick={() => setSendError(null)}
@@ -307,12 +310,12 @@ export const ChatPage: React.FC = () => {
             disabled={sending || !session}
             placeholder={
               session
-                ? 'Nhập câu hỏi về bài báo (Enter để gửi, Shift+Enter xuống dòng)…'
-                : 'Đang khởi tạo session…'
+                ? 'Ask a question (Enter to send, Shift+Enter for new line)...'
+                : 'Initializing session...'
             }
           />
           <p className="chat-composer__hint">
-            Enter gửi · Shift+Enter xuống dòng · Câu trả lời được lưu lại
+            Enter to send · Shift+Enter for new line
           </p>
         </div>
       </div>

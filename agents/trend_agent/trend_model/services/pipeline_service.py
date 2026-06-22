@@ -2,7 +2,11 @@ import os
 import sys
 
 # Add backend directory to sys.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from backend.app.db.models import Paper, Topic
 
 import numpy as np
 from datetime import datetime, timedelta
@@ -16,8 +20,20 @@ from bertopic.vectorizers import ClassTfidfTransformer
 import requests
 
 
+import torch
+
 # Init embedding model (all-MiniLM-L6-v2)
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+try:
+    _device = "cuda" if torch.cuda.is_available() else "cpu"
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device=_device)
+except RuntimeError as e:
+    if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+        print("GPU OOM during SentenceTransformer load. Falling back to CPU...")
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+    else:
+        raise e
 
 def get_papers_last_30_days(db):
     """Lọc dữ liệu 30 ngày gần nhất từ database"""
@@ -28,7 +44,17 @@ def get_papers_last_30_days(db):
 def generate_embeddings(texts: list[str]) -> np.ndarray:
     """Sử dụng mô hình nhỏ để sinh embeddings nhanh"""
     print(f"Generating embeddings for {len(texts)} abstracts...")
-    return embedding_model.encode(texts, show_progress_bar=True)
+    try:
+        return embedding_model.encode(texts, show_progress_bar=True)
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+            print("GPU OOM during embeddings generation. Falling back to CPU...")
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            embedding_model.to("cpu")
+            return embedding_model.encode(texts, show_progress_bar=True)
+        else:
+            raise e
 
 # ----------------- NHÁNH 1: ZERO-SHOT CLASSIFICATION ----------------- #
 def process_zero_shot_classification(db, papers):
@@ -36,13 +62,13 @@ def process_zero_shot_classification(db, papers):
     Phân loại bài báo mới vào các chủ đề tạo sẵn dựa vào Cosine Similarity.
     Đầu ra: Danh sách JSON (Leaderboard) sắp xếp theo số lượng / growth rate.
     """
-    categories = db.query(Category).all()
+    categories = db.query(Topic).all()
     if not categories:
-        print("No predefined categories found.")
+        print("No predefined topics found.")
         return []
-    
-    cat_vectors = np.array([cat.category_vector for cat in categories]) # (M, 384)
+        
     cat_names = [cat.name for cat in categories]
+    cat_vectors = generate_embeddings(cat_names) # (M, 384)
     
     # Handle zero vectors in categories
     norms = np.linalg.norm(cat_vectors, axis=1, keepdims=True)
@@ -225,7 +251,7 @@ def run_full_pipeline(db = None):
     if db is not None:
         try:
             papers = get_papers_last_30_days(db)
-            categories = db.query(Category).all()
+            categories = db.query(Topic).all()
         except Exception as e:
             print(f"DB error: {e}")
             return {"leaderboard": [], "graph": {"nodes": [], "edges": []}}
@@ -242,12 +268,7 @@ def run_full_pipeline(db = None):
         for i, p in enumerate(papers_to_embed):
             p.paper_vector = vectors[i].tolist()
             
-    cats_to_embed = [c for c in categories if getattr(c, "category_vector", None) is None]
-    if cats_to_embed:
-        cat_texts = [c.name for c in cats_to_embed]
-        cat_vectors = generate_embeddings(cat_texts)
-        for i, c in enumerate(cats_to_embed):
-            c.category_vector = cat_vectors[i].tolist()
+    # Embedding for categories is done dynamically in process_zero_shot_classification
         
     output_1 = process_zero_shot_classification(db, papers)
     output_2 = process_topic_clustering(None, papers)

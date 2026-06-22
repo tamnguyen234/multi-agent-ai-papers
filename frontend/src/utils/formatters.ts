@@ -1,6 +1,6 @@
 /**
  * Shared formatting utilities for paper data.
- * NOTE: buildMediaUrl, formatDuration, formatScore, arxivAbsUrl
+ * NOTE: buildMediaUrl, formatDuration, arxivAbsUrl
  * are already defined in utils/mediaUrl.ts — import from there.
  * This file adds text/display formatters only.
  */

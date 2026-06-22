@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { userApi } from '../api/userApi';
 import { getApiErrorMessage } from '../utils/apiError';
+import { LayoutDashboard, FileText, TrendingUp, Bell, User } from 'lucide-react';
 
 export const AppLayout: React.FC = () => {
   const { currentUser, logout, updateCurrentUserLocal } = useAuth();
@@ -47,26 +48,22 @@ export const AppLayout: React.FC = () => {
       {/* Sidebar Navigation */}
       <aside className="app-sidebar">
         <div className="sidebar-brand">
-          <div className="brand-logo">MA</div>
-          <h2>AI Paper System</h2>
+          <div className="brand-logo">PI</div>
+          <h2>AI Paper Insight</h2>
         </div>
         
         <nav className="sidebar-nav">
           <NavLink to="/dashboard" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">📊</span>
+            <LayoutDashboard className="nav-icon" size={20} />
             <span className="nav-text">Dashboard</span>
           </NavLink>
           <NavLink to="/papers" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">📄</span>
-            <span className="nav-text">Browse Papers</span>
+            <FileText className="nav-icon" size={20} />
+            <span className="nav-text">All Papers</span>
           </NavLink>
           <NavLink to="/trends" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">📈</span>
-            <span className="nav-text">Trend Dashboard</span>
-          </NavLink>
-          <NavLink to="/chat" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">💬</span>
-            <span className="nav-text">Paper Chat QA</span>
+            <TrendingUp className="nav-icon" size={20} />
+            <span className="nav-text">Trend Analysis</span>
           </NavLink>
         </nav>
 
@@ -80,16 +77,17 @@ export const AppLayout: React.FC = () => {
         {/* Header */}
         <header className="app-header">
           <div className="header-left">
-            <span className="system-title">Hệ Thống Multi-Agent Tương Tác Bài Báo AI</span>
+            <span className="system-title">AI Paper Insight Dashboard</span>
           </div>
 
           <div className="header-right">
             {/* Notification Toggle */}
             <div 
               className="noti-toggle-container" 
-              title="Nhận email Daily Digest mỗi ngày khi scheduler chạy."
+              title="Receive Daily Digest emails"
             >
-              <span className="noti-label">Nhận báo cáo Email hàng ngày:</span>
+              <Bell size={16} className="text-muted" />
+              <span className="noti-label">Daily Digest</span>
               <label className="switch" aria-label="Bật/Tắt nhận báo cáo qua email hàng ngày">
                 <input
                   type="checkbox"
@@ -104,7 +102,9 @@ export const AppLayout: React.FC = () => {
 
             {/* User Profile Info */}
             <div className="user-profile">
-              <span className="user-avatar">{currentUser?.full_name?.charAt(0).toUpperCase()}</span>
+              <span className="user-avatar">
+                <User size={18} />
+              </span>
               <div className="user-details">
                 <span className="user-name">{currentUser?.full_name}</span>
                 <span className="user-role">@{currentUser?.username}</span>

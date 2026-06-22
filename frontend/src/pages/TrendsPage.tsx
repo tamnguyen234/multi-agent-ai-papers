@@ -14,6 +14,10 @@ import {
   Brain,
   HelpCircle,
   ExternalLink,
+  Tag,
+  Flame,
+  Activity,
+  AlertTriangle
 } from 'lucide-react';
 import { getTrends, analyzeTrends, getTrendHealth } from '../api/trendApi';
 import { normalizeTrendData } from '../utils/trendTransform';
@@ -370,7 +374,9 @@ export const TrendsPage: React.FC = () => {
     return (
       <div className="trends-page">
         <div className="trends-error-container">
-          <div className="trends-error-text">⚠️ {error}</div>
+          <div className="trends-error-text flex items-center gap-2 justify-center">
+            <AlertTriangle size={20} className="text-warning" /> {error}
+          </div>
           <button
             className="trends-retry-btn"
             onClick={() => {
@@ -390,16 +396,22 @@ export const TrendsPage: React.FC = () => {
       {/* ── Top Header ── */}
       <div className="trends-header">
         <div className="trends-title-section">
-          <h1 className="trends-title">📈 Phân Tích Xu Hướng Chủ Đề</h1>
+          <h1 className="trends-title flex items-center gap-2">
+            <TrendingUp size={24} /> Phân Tích Xu Hướng Chủ Đề
+          </h1>
           <div className="trends-status-container">
             {healthStatus === 'healthy' ? (
-              <span className="status-badge status-badge--healthy" title={`Chế độ phân tích: ${agentMode}`}>
-                ● Trend Agent: Hoạt động ({agentMode})
+              <span className="status-badge status-badge--healthy flex items-center gap-1" title={`Chế độ phân tích: ${agentMode}`}>
+                <Activity size={14} /> Trend Agent: Hoạt động ({agentMode})
               </span>
             ) : healthStatus === 'unhealthy' ? (
-              <span className="status-badge status-badge--unhealthy">● Trend Agent: Ngoại tuyến</span>
+              <span className="status-badge status-badge--unhealthy flex items-center gap-1">
+                <Activity size={14} /> Trend Agent: Ngoại tuyến
+              </span>
             ) : (
-              <span className="status-badge status-badge--checking">● Trend Agent: Đang kiểm tra...</span>
+              <span className="status-badge status-badge--checking flex items-center gap-1">
+                <Activity size={14} /> Trend Agent: Đang kiểm tra...
+              </span>
             )}
           </div>
         </div>
@@ -424,14 +436,14 @@ export const TrendsPage: React.FC = () => {
       {/* ── Summary Cards ── */}
       <div className="trends-summary-grid">
         <div className="trend-summary-card">
-          <span className="summary-icon">🏷️</span>
+          <span className="summary-icon"><Tag size={24} /></span>
           <div className="summary-info">
             <span className="summary-value">{normalized.topic_count}</span>
             <span className="summary-label">Chủ đề khoa học</span>
           </div>
         </div>
         <div className="trend-summary-card">
-          <span className="summary-icon">📄</span>
+          <span className="summary-icon"><FileText size={24} /></span>
           <div className="summary-info">
             <span className="summary-value">{normalized.total_papers}</span>
             <span className="summary-label">Bài báo được phân cụm</span>
@@ -439,7 +451,7 @@ export const TrendsPage: React.FC = () => {
         </div>
         {normalized.topTopic && (
           <div className="trend-summary-card">
-            <span className="summary-icon">🔥</span>
+            <span className="summary-icon"><Flame size={24} /></span>
             <div className="summary-info">
               <span className="summary-value" title={normalized.topTopic.name}>
                 {normalized.topTopic.name}

@@ -7,6 +7,7 @@ import { buildMediaUrl } from '../utils/mediaUrl';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
+import { Search, RotateCw, X, FileText } from 'lucide-react';
 
 type SortKey = 'published' | 'score' | 'title';
 type FilterAudio = 'all' | 'has_audio' | 'no_audio';
@@ -111,7 +112,7 @@ export const PapersPage: React.FC = () => {
       {/* Page header */}
       <div className="papers-page__header">
         <div>
-          <h1 className="papers-page__title">📄 Danh sách Bài báo</h1>
+          <h1 className="papers-page__title">All Papers</h1>
           <p className="papers-page__subtitle">
             {loading
               ? 'Đang tải…'
@@ -123,8 +124,9 @@ export const PapersPage: React.FC = () => {
           onClick={fetchPapers}
           disabled={loading}
           id="btn-refresh-papers"
+          title="Refresh papers list"
         >
-          {loading ? <span className="spinner-small" /> : '↺ Làm mới'}
+          {loading ? <RotateCw className="spinner-small" size={16} /> : <><RotateCw size={16} /> Refresh</>}
         </button>
       </div>
 
@@ -132,12 +134,12 @@ export const PapersPage: React.FC = () => {
       <div className="papers-toolbar">
         {/* Search */}
         <div className="toolbar-search">
-          <span className="toolbar-search__icon">🔍</span>
+          <span className="toolbar-search__icon"><Search size={16} /></span>
           <input
             id="papers-search"
             type="text"
             className="toolbar-search__input"
-            placeholder="Tìm theo tiêu đề, ID bài báo, tác giả…"
+            placeholder="Search by title, ID, author..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
@@ -145,9 +147,9 @@ export const PapersPage: React.FC = () => {
             <button
               className="toolbar-search__clear"
               onClick={() => setSearchText('')}
-              aria-label="Xóa tìm kiếm"
+              aria-label="Clear search"
             >
-              ×
+              <X size={16} />
             </button>
           )}
         </div>
@@ -200,7 +202,7 @@ export const PapersPage: React.FC = () => {
         {/* Clear */}
         {hasActiveFilters && (
           <button className="btn-clear-filters" onClick={handleClearFilters}>
-            ✕ Xóa bộ lọc
+            <X size={14} className="mr-1" /> Clear Filters
           </button>
         )}
       </div>
@@ -218,12 +220,12 @@ export const PapersPage: React.FC = () => {
       {/* Empty */}
       {!loading && !error && displayed.length === 0 && (
         <EmptyState
-          title={papers.length === 0 ? 'Chưa có bài báo nào' : 'Không tìm thấy kết quả phù hợp'}
+          title={papers.length === 0 ? 'No papers available' : 'No matching results'}
           message={papers.length === 0
-            ? 'Hãy chạy Daily Digest Job từ Dashboard để lấy bài báo mới.'
-            : 'Thử thay đổi từ khóa hoặc bộ lọc của bạn.'}
-          icon={papers.length === 0 ? '📭' : '🔎'}
-          actionLabel={hasActiveFilters ? 'Xóa bộ lọc' : undefined}
+            ? 'Run the Daily Digest Job from the dashboard to fetch new papers.'
+            : 'Try adjusting your search query or filters.'}
+          icon={<FileText size={48} className="text-muted" />}
+          actionLabel={hasActiveFilters ? 'Clear Filters' : undefined}
           onAction={hasActiveFilters ? handleClearFilters : undefined}
         />
       )}

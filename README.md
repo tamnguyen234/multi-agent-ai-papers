@@ -7,7 +7,7 @@ A powerful, microservices-based Multi-Agent system for collecting, translating, 
 - **Automated Daily Pipeline**: Fetches trending AI papers daily from Hugging Face, translates abstracts to Vietnamese using NLLB-200, and synthesizes audio summaries.
 - **Microservice Architecture**: Decoupled agents (Daily Pipeline, TTS, Trend, QA) communicate via REST APIs, orchestrated by a central FastAPI backend.
 - **Trend Analysis**: Automatically clusters daily papers into emerging scientific topics using SentenceTransformers and UMAP dimensionality reduction.
-- **RAG Chat (QA Agent)**: Chat locally with your papers using Ollama and Llama 3 models.
+- **RAG Chat (QA Agent)**: Chat locally with your papers using Ollama and Qwen 3.5 models.
 - **Email Digest**: Daily automated email newsletters with the top trending papers.
 
 ## 🏗️ System Architecture
@@ -16,16 +16,17 @@ The project consists of 5 main components:
 
 1. **Backend API Gateway (FastAPI - Port 8000)**: Orchestrates the system, serves the frontend, handles database interactions, and runs background jobs.
 2. **Frontend (React + Vite - Port 5173)**: Beautiful, responsive UI to view papers, audio, trends, and chat.
-3. **Daily Paper Audio Pipeline (Standalone)**: A robust pipeline job that queries Hugging Face, translates text via local NLLB-200 model, and generates TTS audio.
-4. **Trend Agent (FastAPI)**: A lightweight internal service that processes text embeddings and applies UMAP to cluster papers into topics.
-5. **QA Agent (Ollama)**: Local LLM integration for Retrieval-Augmented Generation.
+3. **Daily Paper Agent (Standalone)**: A robust pipeline job that queries Hugging Face, translates text via local NLLB-200 model, and interacts with the TTS agent.
+4. **Trend Agent (FastAPI - Port 8005)**: A lightweight internal service that processes text embeddings and applies UMAP to cluster papers into topics.
+5. **QA Agent (FastAPI - Port 8103)**: Local LLM integration for Retrieval-Augmented Generation using Ollama.
+6. **TTS Agent (FastAPI - Port 8104)**: Synthesizes text to speech using Hugging Face models.
 
 ## ⚙️ Prerequisites
 
 - Python 3.10+
 - Node.js 18+
 - MySQL Server 8.0+
-- Ollama (installed locally with `llama3.2:1b` model for QA and Trend)
+- Ollama (installed locally with `qwen3.5:4b` and `nomic-embed-text` models for QA)
 
 ## 🛠️ Installation & Setup
 

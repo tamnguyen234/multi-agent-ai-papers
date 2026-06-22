@@ -41,6 +41,13 @@ if not exist backend\.env (
 
 
 
+if not exist agents\daily_paper_agent\.env (
+    echo Creating agents/daily_paper_agent/.env from example...
+    copy agents\daily_paper_agent\.env.example agents\daily_paper_agent\.env > nul
+) else (
+    echo agents/daily_paper_agent/.env already exists. Skipping.
+)
+
 if not exist agents\qa_agent\.env (
     echo Creating agents/qa_agent/.env from example...
     copy agents\qa_agent\.env.example agents\qa_agent\.env > nul
@@ -48,11 +55,11 @@ if not exist agents\qa_agent\.env (
     echo agents/qa_agent/.env already exists. Skipping.
 )
 
-if not exist agents\daily_paper_audio_pipeline\tts_agent\.env (
-    echo Creating agents/daily_paper_audio_pipeline/tts_agent/.env from example...
-    copy agents\daily_paper_audio_pipeline\tts_agent\.env.example agents\daily_paper_audio_pipeline\tts_agent\.env > nul
+if not exist agents\tts_agent\.env (
+    echo Creating agents/tts_agent/.env from example...
+    copy agents\tts_agent\.env.example agents\tts_agent\.env > nul
 ) else (
-    echo agents/daily_paper_audio_pipeline/tts_agent/.env already exists. Skipping.
+    echo agents/tts_agent/.env already exists. Skipping.
 )
 
 if not exist frontend\.env (
@@ -93,7 +100,7 @@ echo.
 echo [3/3] Setting up virtual environments for AI Agents (%MODE_NAME%)...
 
 :: Loop helper to setup each agent
-for %%A in (qa_agent trend_agent daily_paper_audio_pipeline daily_paper_audio_pipeline\tts_agent) do (
+for %%A in (qa_agent trend_agent daily_paper_agent tts_agent) do (
     echo.
     echo ---------------------------------------------------
     echo Configuring agents/%%A...
@@ -117,7 +124,7 @@ for %%A in (qa_agent trend_agent daily_paper_audio_pipeline daily_paper_audio_pi
         goto error
     )
 
-    echo Installing dependencies (%REQ_FILE%) for agents/%%A...
+    echo Installing dependencies from %REQ_FILE% for agents/%%A...
     agents\%%A\.venv\Scripts\pip.exe install -r agents\%%A\%REQ_FILE%
     if %ERRORLEVEL% neq 0 (
         echo ERROR: Failed to install dependencies for agents/%%A.

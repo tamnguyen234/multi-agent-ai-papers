@@ -3,7 +3,7 @@ import React from 'react';
 interface EmptyStateProps {
   title?: string;
   message: string;
-  icon?: string;
+  icon?: React.ReactNode;
   actionLabel?: string;
   onAction?: () => void;
   actionDisabled?: boolean;

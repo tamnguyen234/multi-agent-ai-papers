@@ -29,12 +29,6 @@ export function formatDuration(seconds: number | null | undefined): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-/**
- * Format a score (0–1 float) to a percentage-like string, e.g. "87.3"
- */
-export function formatScore(score: number): string {
-  return (score * 100).toFixed(1);
-}
 
 /**
  * Build URL from external_id

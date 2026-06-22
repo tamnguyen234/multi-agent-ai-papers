@@ -64,11 +64,33 @@ def perform_rag_qa(paper_id: int, pdf_path: str, question: str, history: list[di
     if _reranker_model is None:
         logger.info("Loading Cross-Encoder reranker model (BAAI/bge-reranker-base)...")
         from sentence_transformers import CrossEncoder
-        _reranker_model = CrossEncoder("BAAI/bge-reranker-base")
+        import torch
+        try:
+            _device = "cuda" if torch.cuda.is_available() else "cpu"
+            _reranker_model = CrossEncoder("BAAI/bge-reranker-base", device=_device)
+        except RuntimeError as e:
+            if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                logger.warning("GPU OOM during CrossEncoder load. Falling back to CPU...")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                _reranker_model = CrossEncoder("BAAI/bge-reranker-base", device="cpu")
+            else:
+                raise e
         
     pairs = [[question, item[0].page_content] for item in docs_and_scores]
     logger.info(f"Computing reranker scores for {len(pairs)} candidate pairs...")
-    rerank_scores = _reranker_model.predict(pairs)
+    try:
+        rerank_scores = _reranker_model.predict(pairs)
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+            logger.warning("GPU OOM during CrossEncoder predict. Falling back to CPU...")
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            _reranker_model.model.to("cpu")
+            rerank_scores = _reranker_model.predict(pairs)
+        else:
+            raise e
     
     # Associate candidates with their reranker scores
     scored_candidates = []

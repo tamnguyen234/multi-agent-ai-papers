@@ -1,1 +1,0 @@
-USE ai_papers;

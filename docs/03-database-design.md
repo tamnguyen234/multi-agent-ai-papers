@@ -265,4 +265,4 @@ cd backend
 
 ---
 
-*Tham khảo: [docs/02-system-architecture.md](02-system-architecture.md) | [scripts/reset_db.sql](../scripts/reset_db.sql)*
+*Tham khảo: [docs/02-system-architecture.md](02-system-architecture.md)*

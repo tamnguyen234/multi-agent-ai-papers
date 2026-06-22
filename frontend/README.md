@@ -14,7 +14,7 @@ The frontend interface for the AI Papers Multi-Agent System, built with **React*
 - React 19
 - Vite
 - TypeScript
-- TailwindCSS (Styling)
+- Vanilla CSS (Styling)
 - Axios (HTTP Client)
 - React Router DOM
 - React Force Graph 2D

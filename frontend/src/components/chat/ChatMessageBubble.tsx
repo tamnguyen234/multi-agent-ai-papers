@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '../../types/chat';
 import { formatDateTime } from '../../utils/formatters';
+import { User, Bot, Settings } from 'lucide-react';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -16,7 +17,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message }) => {
     <div className={`chat-bubble-row chat-bubble-row--${message.role}`}>
       {/* Avatar */}
       <div className={`chat-avatar chat-avatar--${message.role}`} aria-label={message.role}>
-        {isUser ? '👤' : isAssistant ? '🤖' : '⚙️'}
+        {isUser ? <User size={16} /> : isAssistant ? <Bot size={16} /> : <Settings size={16} />}
       </div>
 
       {/* Bubble */}
@@ -24,7 +25,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message }) => {
         {/* Role label + time */}
         <div className="chat-bubble__meta">
           <span className="chat-bubble__role">
-            {isUser ? 'Bạn' : isAssistant ? 'Trợ lý AI' : 'Hệ thống'}
+            {isUser ? 'You' : isAssistant ? 'AI Assistant' : 'System'}
           </span>
           {message.created_at && (
             <span className="chat-bubble__time">{formatDateTime(message.created_at)}</span>

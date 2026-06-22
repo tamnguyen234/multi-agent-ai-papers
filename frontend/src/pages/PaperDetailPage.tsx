@@ -9,6 +9,7 @@ import { buildMediaUrl, externalAbsUrl } from '../utils/mediaUrl';
 import LoadingState from '../components/ui/LoadingState';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
+import { ArrowLeft, ExternalLink, TrendingUp, FileText, Mic, Users, Calendar, Hash, MessageSquare, PlayCircle, SearchX, Download } from 'lucide-react';
 
 export const PaperDetailPage: React.FC = () => {
   const { paperId } = useParams<{ paperId: string }>();
@@ -95,10 +96,10 @@ export const PaperDetailPage: React.FC = () => {
   if (notFound) {
     return (
       <EmptyState
-        title="Không tìm thấy bài báo"
-        message={`Bài báo với ID ${paperId || ''} không tồn tại hoặc đã bị xóa.`}
-        icon="🔍"
-        actionLabel="← Quay lại danh sách"
+        title="Paper Not Found"
+        message={`The paper with ID ${paperId || ''} does not exist or has been removed.`}
+        icon={<SearchX size={48} className="text-muted" />}
+        actionLabel="Back to papers"
         onAction={() => navigate('/papers')}
       />
     );
@@ -128,22 +129,22 @@ export const PaperDetailPage: React.FC = () => {
       {/* Back navigation */}
       <div className="detail-breadcrumb">
         <button className="btn-back" onClick={() => navigate(-1)}>
-          ← Quay lại
+          <ArrowLeft size={16} className="mr-1" /> Back
         </button>
         <span className="breadcrumb-sep">/</span>
-        <Link to="/papers" className="breadcrumb-link">Bài báo</Link>
+        <Link to="/papers" className="breadcrumb-link">All Papers</Link>
         <span className="breadcrumb-sep">/</span>
-        <span className="breadcrumb-current">Chi tiết</span>
+        <span className="breadcrumb-current">Paper Details</span>
       </div>
 
       {/* Title */}
       <div className="detail-header">
         <h1 className="detail-title">{paper.title}</h1>
         <div className="detail-header__chips">
-          <span className="score-chip">⭐ {scoreLabel}</span>
-          {pdfUrl && <span className="badge badge--pdf">📄 PDF</span>}
+          <span className="score-chip"><TrendingUp size={14} className="mr-1" /> Score {scoreLabel}</span>
+          {pdfUrl && <span className="badge badge--pdf"><FileText size={14} className="mr-1" /> PDF</span>}
           {(audioUrl || paper.has_audio) && (
-            <span className="badge badge--audio">🎙️ Audio</span>
+            <span className="badge badge--audio"><Mic size={14} className="mr-1" /> Audio</span>
           )}
         </div>
       </div>
@@ -151,17 +152,17 @@ export const PaperDetailPage: React.FC = () => {
       {/* Metadata row */}
       <div className="detail-meta">
         <div className="detail-meta__item">
-          <span className="detail-meta__label">ID Nguồn</span>
+          <span className="detail-meta__label"><Hash size={14} className="mr-1" /> Source ID</span>
           <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="detail-meta__link">
-            {paper.external_id} ↗
+            {paper.external_id} <ExternalLink size={12} className="ml-1" />
           </a>
         </div>
         <div className="detail-meta__item">
-          <span className="detail-meta__label">Ngày đăng</span>
+          <span className="detail-meta__label"><Calendar size={14} className="mr-1" /> Published</span>
           <span className="detail-meta__value">{dateStr}</span>
         </div>
         <div className="detail-meta__item">
-          <span className="detail-meta__label">Điểm xu hướng</span>
+          <span className="detail-meta__label"><TrendingUp size={14} className="mr-1" /> Trend Score</span>
           <span className="detail-meta__value">{scoreLabel}</span>
         </div>
       </div>
@@ -169,7 +170,7 @@ export const PaperDetailPage: React.FC = () => {
       {/* Authors */}
       {authorsStr && authorsStr !== 'Không rõ tác giả' && (
         <section className="detail-section">
-          <h2 className="detail-section__title">👤 Tác giả</h2>
+          <h2 className="detail-section__title"><Users size={18} className="mr-2" /> Authors</h2>
           <p className="detail-authors">{authorsStr}</p>
         </section>
       )}
@@ -177,7 +178,7 @@ export const PaperDetailPage: React.FC = () => {
 
       {/* Abstract (EN) */}
       <section className="detail-section">
-        <h2 className="detail-section__title">📋 Abstract (EN)</h2>
+        <h2 className="detail-section__title"><FileText size={18} className="mr-2" /> Original Abstract</h2>
         <div className="detail-section__content">
           {paper.abstract_en}
         </div>
@@ -186,7 +187,7 @@ export const PaperDetailPage: React.FC = () => {
       {/* Translated Abstract */}
       {paper.abstract_vi && (
         <section className="detail-section">
-          <h2 className="detail-section__title">📝 Tóm tắt (VI)</h2>
+          <h2 className="detail-section__title"><FileText size={18} className="mr-2" /> Vietnamese Translation</h2>
           <div className="detail-section__content">
             {paper.abstract_vi}
           </div>
@@ -195,7 +196,7 @@ export const PaperDetailPage: React.FC = () => {
 
       {/* Audio abstract */}
       <section className="detail-section">
-        <h2 className="detail-section__title">🎙️ Audio Abstract</h2>
+        <h2 className="detail-section__title"><Mic size={18} className="mr-2" /> Audio Abstract</h2>
         {audioUrl ? (
           <AudioPlayer
             src={audioUrl}
@@ -207,19 +208,19 @@ export const PaperDetailPage: React.FC = () => {
           <div className="detail-audio-generator">
             {generatingAudio ? (
               <div className="audio-loading">
-                <span className="spinner-mini">⏳</span>
-                <p>Đang tạo audio abstract... (có thể mất từ 30s đến 2 phút)</p>
+                <span className="spinner-mini"></span>
+                <p>Generating audio abstract... (this might take up to 2 minutes)</p>
               </div>
             ) : (
               <div className="audio-generate-action">
-                <p className="audio-generate-hint">Bài báo này chưa có bản ghi âm tóm tắt AI (Audio Abstract) tiếng Việt.</p>
+                <p className="audio-generate-hint">This paper does not have an AI-generated audio abstract yet.</p>
                 <button 
-                  className="btn-detail-action btn-detail-action--generate" 
+                  className="btn-detail-action btn-detail-action--generate flex items-center justify-center gap-2" 
                   onClick={handleGenerateAudio}
                   disabled={generatingAudio}
                   id={`generate-audio-btn-${paper.id}`}
                 >
-                  🎙️ Tạo audio abstract
+                  <PlayCircle size={16} /> Generate Audio Abstract
                 </button>
                 {audioError && <p className="audio-error-msg">⚠️ {audioError}</p>}
               </div>
@@ -230,24 +231,24 @@ export const PaperDetailPage: React.FC = () => {
 
       {/* PDF */}
       <section className="detail-section">
-        <h2 className="detail-section__title">📄 Tài liệu PDF</h2>
+        <h2 className="detail-section__title"><FileText size={18} className="mr-2" /> PDF Document</h2>
         {pdfUrl ? (
           <div className="detail-pdf">
             <a
               href={pdfUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-paper-link btn-paper-link--pdf"
+              className="btn-paper-link btn-paper-link--pdf flex items-center justify-center gap-2"
               id={`detail-pdf-${paper.id}`}
             >
-              📄 Mở PDF trong tab mới
+              <Download size={16} /> View/Download PDF
             </a>
-            <span className="detail-pdf__hint">PDF được tải về từ máy chủ backend.</span>
+            <span className="detail-pdf__hint">Document cached locally from backend.</span>
           </div>
         ) : (
           <div className="detail-missing">
-            <span>📭</span>
-            <p>Chưa có file PDF cho bài báo này.</p>
+            <FileText size={32} className="text-muted opacity-50" />
+            <p>No PDF available for this paper.</p>
           </div>
         )}
       </section>
@@ -256,26 +257,26 @@ export const PaperDetailPage: React.FC = () => {
       <div className="detail-actions">
         <Link
           to={`/chat/${paper.id}`}
-          className="btn-detail-action btn-detail-action--chat"
+          className="btn-detail-action btn-detail-action--chat flex items-center justify-center gap-2"
           id={`detail-chat-${paper.id}`}
         >
-          💬 Hỏi đáp với bài báo này
+          <MessageSquare size={16} /> Ask Q&A Agent
         </Link>
         <a
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-detail-action btn-detail-action--arxiv"
+          className="btn-detail-action btn-detail-action--arxiv flex items-center justify-center gap-2"
           id={`detail-source-${paper.id}`}
         >
-          🔗 Xem nguồn gốc
+          <ExternalLink size={16} /> View External Source
         </a>
         <button
-          className="btn-detail-action btn-detail-action--back"
+          className="btn-detail-action btn-detail-action--back flex items-center justify-center gap-2"
           onClick={() => navigate('/papers')}
           id="detail-back-btn"
         >
-          ← Danh sách bài báo
+          <ArrowLeft size={16} /> Back to Papers
         </button>
       </div>
     </div>
